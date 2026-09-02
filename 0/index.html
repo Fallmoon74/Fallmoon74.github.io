@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Project 0 | Fallmoon74 CS180 Portfolio</title>
+  <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+  <header class="site-header">
+    <div>
+      <p class="eyebrow">CS180 Project 0</p>
+      <h1>Becoming Friends with Your Camera</h1>
+    </div>
+  </header>
+
+  <main class="page">
+    <nav class="content-nav">
+      <a href="../index.html">Home</a>
+      <a href="#part-1">Part 1</a>
+      <a href="#part-2">Part 2</a>
+      <a href="#part-3">Part 3</a>
+    </nav>
+
+    <section id="part-1" class="panel writeup-section">
+      <h2>Part 1: Selfie</h2>
+      <p>I first took a selfie from very close (About 10cm) to my face, then stepped farther back (About 80cm) and zoomed in to ensure that my face stayed the same size in the frame.</p>
+      <div class="figure-grid">
+        <figure>
+          <img src="./fig/selfie1.jpg" alt="Close-up selfie">
+          <figcaption>21 mm eq. @ ~10cm</figcaption>
+        </figure>
+        <figure>
+          <img src="./fig/selfie2.jpg" alt="Portrait taken from farther away with zoom">
+          <figcaption>44 mm eq. framing @ ~80cm</figcaption>
+        </figure>
+      </div>
+      <p>The improvement comes mostly from changing the camera position, not from zoom itself. When the camera is close, nearby parts of the face are magnified much more than farther parts, causing "Distortion". Moving back reduces this perspective distortion, and zooming in only restores the framing.</p>
+    </section>
+
+    <section id="part-2" class="panel writeup-section">
+      <h2>Part 2: Architectural Perspective Compression</h2>
+      <p>For the building scene, I photographed the facade from farther away while zoomed in, then walking straightly and zoomed out to keep the building a similar size.</p>
+      <div class="figure-grid">
+        <figure>
+          <img src="./fig/room1.jpg" alt="Building photographed from farther away with zoom">
+          <figcaption>Farther away with zoom (5m). The building appears more compressed because the relative depth differences are less visible.</figcaption>
+        </figure>
+        <figure>
+          <img src="./fig/room2.jpg" alt="Building photographed from closer position without zoom">
+          <figcaption>Closer without zoom (2m). The nearby parts of the building feel larger, making the perspective lines stronger.</figcaption>
+        </figure>
+      </div>
+      <p>From far away, objects at different depths are all relatively similar distances from the camera, so the scene looks flatter. From close up, distance differences matter more, so the facade shows stronger perspective.</p>
+    </section>
+
+    <section id="part-3" class="panel writeup-section">
+      <h2>Part 3: Dolly Zoom</h2>
+      <p>I combined a sequence of still photos into a dolly zoom GIF. During the sequence, the camera moves while the zoom changes to keep the main subject close to the same size.</p>
+      <p>I first tried using a plain wall as the background, but the effect was not very obvious. I then switched to a scene with a clearer background, which created more visual contrast and made the dolly zoom effect easier to see.</p>
+      <figure class="single-figure">
+        <img src="./fig/Dolly.GIF" alt="Dolly zoom animation">
+        <figcaption>The subject stays in central of the scene, and maintaining size, while the background changes scale and perspective.</figcaption>
+      </figure>
+      <p>The dolly zoom works because camera movement changes perspective, while zoom changes framing. Combining the two creates a noticeable change in the background even when the subject remains visually stable.</p>
+      <div class="dolly-gallery">
+        <img src="./fig/1.jpg" alt="Dolly zoom source frame 1">
+        <img src="./fig/2.jpg" alt="Dolly zoom source frame 2">
+        <img src="./fig/3.jpg" alt="Dolly zoom source frame 3">
+        <img src="./fig/4.jpg" alt="Dolly zoom source frame 4">
+        <img src="./fig/5.jpg" alt="Dolly zoom source frame 5">
+        <img src="./fig/6.jpg" alt="Dolly zoom source frame 6">
+        <img src="./fig/7.jpg" alt="Dolly zoom source frame 7">
+        <img src="./fig/8.jpg" alt="Dolly zoom source frame 8">
+        <img src="./fig/9.jpg" alt="Dolly zoom source frame 9">
+      </div>
+    </section>
+  </main>
+</body>
+</html>
