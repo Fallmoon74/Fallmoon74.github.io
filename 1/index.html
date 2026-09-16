@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Project 1 | Fallmoon74 CS180 Portfolio</title>
+  <link rel="stylesheet" href="../style.css">
+  <script>
+    window.MathJax = {
+      tex: {
+        inlineMath: [['\\(', '\\)']],
+        displayMath: [['\\[', '\\]']]
+      }
+    };
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</head>
+<body>
+  <header class="site-header">
+    <div>
+      <p class="eyebrow">CS180 Project 1</p>
+      <h1>Images of the Russian Empire</h1>
+      <p class="lede">Colorizing the Prokudin-Gorskii photo collection</p>
+    </div>
+  </header>
+
+  <main class="page">
+    <nav class="content-nav">
+      <a href="../index.html">Home</a>
+      <a href="#single-scale">Single-scale NCC</a>
+      <a href="#pyramid">Image Pyramid</a>
+      <a href="#custom-images">Custom Images</a>
+      <a href="#bells-whistles">Bells &amp; Whistles</a>
+      <a href="#sobel">Sobel Extension</a>
+    </nav>
+
+    <section id="single-scale" class="panel writeup-section">
+      <p class="section-kicker">Part 1</p>
+      <h2>Single-scale Alignment with NCC</h2>
+      <p>For the three smaller JPG images, a single-scale NCC algorithm is sufficient. Each original scan contains three vertically stacked grayscale exposures. These exposures record the scene brightness through blue, green, and red filters, respectively. Simply placing them into the three channels of an RGB image produces colored outlines because the three exposures are not aligned.</p>
+      <p>The code structure first split the scan into equal B, G, and R sections and use the blue channel as the reference. Then exhaustively shift the green and red channels over a small window of candidate <code>(dy, dx)</code> displacements. At every candidate position, NCC measures the similarity between the reference and shifted channel.</p>
+      <p>NCC subtracts the mean intensity from each image region and treats the remaining pixel values as vectors. It then divides their dot product by the product of their lengths. This normalization makes the score less sensitive to differences in average brightness. A score closer to 1 indicates that the two channel patterns are more similar.</p>
+      <div class="formula">
+        \[
+        \operatorname{NCC}(I,J)=
+        \frac{\sum_p (I_p-\bar I)(J_p-\bar J)}
+        {\sqrt{\sum_p (I_p-\bar I)^2}\sqrt{\sum_p (J_p-\bar J)^2}}
+        \]
+      </div>
+      <p>Here, <code>I</code> is the blue reference region, <code>J</code> is a candidate shifted region, and <code>p</code> indexes the pixels. I select the displacement that produces the highest NCC score. Border pixels are excluded from scoring so that the glass plate edges and pixels wrapped around by <code>np.roll</code> do not dominate the comparison.</p>
+
+      <h3>Before Border Handling</h3>
+      <p>My first implementation applied NCC directly to almost the entire image. The high-contrast plate borders contributed strongly to the similarity score, so the algorithm sometimes aligned the borders instead of the actual scene. This produced visible red, green, and blue blurring around the church and the tree line. After excluding the border region from the NCC calculation, the three aligned much more closely.</p>
+      <div class="figure-grid">
+        <figure>
+          <img src="./fig/单ncc 无边缘处理.jpg" alt="Cathedral incorrectly aligned before border handling" loading="lazy">
+          <figcaption>Before border handling — the color channels remain visibly misaligned.</figcaption>
+        </figure>
+        <figure>
+          <img src="./fig/单ncc 边缘对齐.jpg" alt="Cathedral correctly aligned after border handling" loading="lazy">
+          <figcaption>After border handling — NCC focuses on the scene rather than the plate edges.</figcaption>
+        </figure>
+      </div>
+
+      <h3>Single-scale Results</h3>
+
+      <div class="figure-grid three-up">
+        <figure>
+          <img src="./fig/单ncc 边缘对齐.jpg" alt="Cathedral aligned with single-scale NCC" loading="lazy">
+          <figcaption>Cathedral — G: (5, 2), R: (12, 3)</figcaption>
+        </figure>
+        <figure>
+          <img src="./fig/单ncc 对齐2.jpg" alt="Monastery aligned with single-scale NCC" loading="lazy">
+          <figcaption>Monastery — G: (-3, 2), R: (3, 2)</figcaption>
+        </figure>
+        <figure>
+          <img src="./fig/单ncc 对齐3.jpg" alt="Tobolsk aligned with single-scale NCC" loading="lazy">
+          <figcaption>Tobolsk — G: (3, 3), R: (6, 3)</figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <section id="pyramid" class="panel writeup-section">
+      <p class="section-kicker">Part 2</p>
+      <h2>Multi-scale Image Pyramid</h2>
+      <p>The TIFF scans are much larger than the JPG images, and their correct displacements can exceed one hundred pixels. Exhaustively testing every large displacement at full resolution would require many expensive NCC evaluations. To make this practical, I use a coarse-to-fine image pyramid.</p>
+      <p>At the smallest level, I search a relatively wide window of ±30 pixels and select the displacement with the highest NCC score. A displacement found on this small image represents a much larger displacement in the original image.</p>
+
+      <h3>Fine-level Refinement</h3>
+      <p>When moving to the next finer level, I first double the previous displacement. I then search only for a local correction around that prediction:</p>
+      <div class="formula">
+        \[
+        \widetilde{\mathbf d}^{(l)}=2\mathbf d^{(l+1)},
+        \qquad
+        \mathbf d^{(l)}=
+        \widetilde{\mathbf d}^{(l)}+
+        \underset{\boldsymbol\delta\in[-r_l,r_l]^2}{\operatorname{arg\,max}}
+        \operatorname{NCC}\!\left(
+        B^{(l)},
+        T_{\widetilde{\mathbf d}^{(l)}+\boldsymbol\delta}\!\left(C^{(l)}\right)
+        \right)
+        \]
+      </div>
+      <p>With four downsampling steps, the correction radius becomes smaller toward full resolution: approximately 15, 8, 4, and finally 2 pixels. This preserves the large motion discovered at the coarse level while allowing each finer level to correct rounding and downsampling errors. The process is performed independently for green-to-blue and red-to-blue alignment, and the level-0 displacements are applied to the original channels.</p>
+      <p>Before building the pyramid, I remove 10% from each side of a copy of every channel used for scoring. The final offsets are then applied to the full-resolution, uncropped channels. This prevents the glass plate borders from controlling the NCC score without discarding image content from the final colorized result.</p>
+
+      <div class="table-wrap">
+        <table class="results-table">
+          <thead>
+            <tr><th>Image</th><th>G → B (dy, dx)</th><th>R → B (dy, dx)</th><th>Notes</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>church</td><td>(25, 4)</td><td>(58, -4)</td><td></td></tr>
+            <tr><td>emir</td><td>(49, 24)</td><td>(-280, -472)</td><td>Raw NCC failure case</td></tr>
+            <tr><td>harvesters</td><td>(60, 17)</td><td>(124, 14)</td><td></td></tr>
+            <tr><td>icon</td><td>(41, 17)</td><td>(89, 23)</td><td></td></tr>
+            <tr><td>ilemselga</td><td>(40, 7)</td><td>(130, 11)</td><td></td></tr>
+            <tr><td>melons</td><td>(81, 10)</td><td>(178, 14)</td><td></td></tr>
+            <tr><td>religous_painting</td><td>(28, 3)</td><td>(68, 7)</td><td></td></tr>
+            <tr><td>self_portrait</td><td>(79, 29)</td><td>(176, 37)</td><td></td></tr>
+            <tr><td>siren</td><td>(49, -6)</td><td>(96, -25)</td><td></td></tr>
+            <tr><td>three_generations</td><td>(53, 14)</td><td>(111, 11)</td><td></td></tr>
+            <tr><td>wharf</td><td>(15, -7)</td><td>(82, -16)</td><td></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Provided TIFF Results</h3>
+      <div class="figure-grid three-up">
+        <figure><img src="./fig/church_pyramid.jpg" alt="Colorized Church produced with pyramid alignment" loading="lazy"><figcaption>Church — G: (25, 4), R: (58, -4)</figcaption></figure>
+        <figure><img src="./fig/emir_pyramid.jpg" alt="Colorized Emir produced with pyramid alignment" loading="lazy"><figcaption>Emir — raw NCC fails on the red channel.</figcaption></figure>
+        <figure><img src="./fig/harvesters_pyramid.jpg" alt="Colorized Harvesters produced with pyramid alignment" loading="lazy"><figcaption>Harvesters — G: (60, 17), R: (124, 14)</figcaption></figure>
+        <figure><img src="./fig/icon_pyramid.jpg" alt="Colorized Icon produced with pyramid alignment" loading="lazy"><figcaption>Icon — G: (41, 17), R: (89, 23)</figcaption></figure>
+        <figure><img src="./fig/ilemselga_pyramid.jpg" alt="Colorized Ilemselga produced with pyramid alignment" loading="lazy"><figcaption>Ilemselga — G: (40, 7), R: (130, 11)</figcaption></figure>
+        <figure><img src="./fig/melons_pyramid.jpg" alt="Colorized Melons produced with pyramid alignment" loading="lazy"><figcaption>Melons — G: (81, 10), R: (178, 14)</figcaption></figure>
+        <figure><img src="./fig/religous_painting_pyramid.jpg" alt="Colorized Religious Painting produced with pyramid alignment" loading="lazy"><figcaption>Religious Painting — G: (28, 3), R: (68, 7)</figcaption></figure>
+        <figure><img src="./fig/self_portrait_pyramid.jpg" alt="Colorized Self Portrait produced with pyramid alignment" loading="lazy"><figcaption>Self Portrait — G: (79, 29), R: (176, 37)</figcaption></figure>
+        <figure><img src="./fig/siren_pyramid.jpg" alt="Colorized Siren produced with pyramid alignment" loading="lazy"><figcaption>Siren — G: (49, -6), R: (96, -25)</figcaption></figure>
+        <figure><img src="./fig/three_generations_pyramid.jpg" alt="Colorized Three Generations produced with pyramid alignment" loading="lazy"><figcaption>Three Generations — G: (53, 14), R: (111, 11)</figcaption></figure>
+        <figure><img src="./fig/wharf_pyramid.jpg" alt="Colorized Wharf produced with pyramid alignment" loading="lazy"><figcaption>Wharf — G: (15, -7), R: (82, -16)</figcaption></figure>
+      </div>
+      <p><strong>Failure discussion:</strong> Emir is the failure case. Its red-channel exposure differs strongly in brightness from the blue reference, so raw-pixel NCC can prefer a structurally incorrect displacement.</p>
+    </section>
+
+    <section id="custom-images" class="panel writeup-section">
+      <p class="section-kicker">Additional Examples</p>
+      <h2>Images from the Prokudin-Gorskii Collection</h2>
+      <p>I selected three additional photos from the Prokudin-Gorskii collection and processed them with the same baseline NCC pyramid method.</p>
+
+      <div class="table-wrap">
+        <table class="results-table">
+          <thead>
+            <tr><th>Image</th><th>G → B (dy, dx)</th><th>R → B (dy, dx)</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>College</td><td>(18, 1)</td><td>(89, 3)</td></tr>
+            <tr><td>Monrepos</td><td>(44, 3)</td><td>(164, 2)</td></tr>
+            <tr><td>Petrozavodska</td><td>(28, -7)</td><td>(108, -19)</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="figure-grid three-up">
+        <figure><img src="./fig/college_pyramid.jpg" alt="College aligned with the image pyramid" loading="lazy"><figcaption>College — G: (18, 1), R: (89, 3)</figcaption></figure>
+        <figure><img src="./fig/Monrepos_pyramid.jpg" alt="Monrepos aligned with the image pyramid" loading="lazy"><figcaption>Monrepos — G: (44, 3), R: (164, 2)</figcaption></figure>
+        <figure><img src="./fig/Petrozavodska_pyramid.jpg" alt="Petrozavodska aligned with the image pyramid" loading="lazy"><figcaption>Petrozavodska — G: (28, -7), R: (108, -19)</figcaption></figure>
+      </div>
+    </section>
+
+    <section id="bells-whistles" class="panel writeup-section">
+      <p class="section-kicker">Bells &amp; Whistles</p>
+      <h2>Automatic Cropping</h2>
+      <p>I detect borders independently in the B, G, and R plates, then use the largest crop on each side for all three channels. The detector combines two signals:</p>
+      <ul>
+        <li><strong>Near-black bands:</strong> consecutive rows or columns where at least 85% of pixels are below a dark-intensity threshold.</li>
+        <li><strong>Intensity jumps:</strong> the first unusually strong change between adjacent rows or columns near an outer edge.</li>
+      </ul>
+      <p>For a row <code>i</code>, the near-black ratio is the fraction of its pixels whose intensity is at most 0.05. The same calculation is applied to columns:</p>
+      <div class="formula">
+        \[
+        q_i=\frac{1}{W}\sum_{x=1}^{W}\mathbf{1}\!\left[I(i,x)\leq 0.05\right],
+        \qquad \text{black border if }q_i\geq 0.85
+        \]
+      </div>
+      <p>For jump detection, I first smooth the channel and compute the mean absolute difference between adjacent rows. A jump is accepted only when it exceeds both a fixed minimum and an adaptive threshold based on the median absolute deviation:</p>
+      <div class="formula">
+        \[
+        j_i=\frac{1}{W_c}\sum_{x\in\text{center }80\%}
+        \left|\widetilde I(i+1,x)-\widetilde I(i,x)\right|
+        \]
+        \[
+        \tau=\max\!\left(0.03,\;\operatorname{median}(j)
+        +6\operatorname{median}\!\left(|j-\operatorname{median}(j)|\right)\right)
+        \]
+      </div>
+      <p>For each side, I keep the larger boundary found by the black-band and jump detectors. I then take the largest boundary among the B, G, and R channels so that the same safe crop is applied to all three。</p>
+      <p>I still use a fixed 10% interior crop for alignment. Automatic border detection is applied to the final output, and the invalid regions introduced by channel shifts are removed as well.</p>
+
+      <div class="comparison-grid">
+        <figure>
+          <img src="./fig/Monrepos_pyramid.jpg" alt="Monrepos before automatic cropping" loading="lazy">
+          <figcaption>Before automatic crop</figcaption>
+        </figure>
+        <figure>
+          <img src="./fig/Monrepos_advanced.jpg" alt="Monrepos after automatic cropping" loading="lazy">
+          <figcaption>After automatic crop</figcaption>
+        </figure>
+      </div>
+
+      <h2>Automatic Contrast</h2>
+      <p>After cropping, I compute the 1st and 99th percentile intensities over the RGB image. The main intensity range is mapped to [0, 1], while values outside it are clipped. Ignoring the darkest and brightest 1% reduces the influence of isolated black scratches or white exposure artifacts.</p>
+      <div class="formula">
+        \[
+        l=P_1(I),\qquad h=P_{99}(I),\qquad
+        I'=\operatorname{clip}\!\left(\frac{I-l}{h-l},0,1\right)
+        \]
+      </div>
+      <div class="comparison-grid">
+        <figure>
+          <img src="./fig/church_cropped.jpg" alt="Church before automatic contrast enhancement" loading="lazy">
+          <figcaption>Before contrast enhancement</figcaption>
+        </figure>
+        <figure>
+          <img src="./fig/church_advanced.jpg" alt="Church after automatic contrast enhancement" loading="lazy">
+          <figcaption>After contrast enhancement</figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <section id="advanced-results" class="panel writeup-section">
+      <p class="section-kicker">Final Gallery</p>
+      <h2>All Advanced Results</h2>
+      <p>These final outputs combine pyramid alignment with automatic border cropping and percentile-based contrast enhancement.</p>
+      <div class="figure-grid three-up">
+        <figure><img src="./fig/cathedral_advanced.jpg" alt="Advanced Cathedral result" loading="lazy"><figcaption>Cathedral</figcaption></figure>
+        <figure><img src="./fig/monastery_advanced.jpg" alt="Advanced Monastery result" loading="lazy"><figcaption>Monastery</figcaption></figure>
+        <figure><img src="./fig/tobolsk_advanced.jpg" alt="Advanced Tobolsk result" loading="lazy"><figcaption>Tobolsk</figcaption></figure>
+        <figure><img src="./fig/church_advanced.jpg" alt="Advanced Church result" loading="lazy"><figcaption>Church</figcaption></figure>
+        <figure><img src="./fig/emir_advanced.jpg" alt="Advanced Emir result" loading="lazy"><figcaption>Emir</figcaption></figure>
+        <figure><img src="./fig/harvesters_advanced.jpg" alt="Advanced Harvesters result" loading="lazy"><figcaption>Harvesters</figcaption></figure>
+        <figure><img src="./fig/icon_advanced.jpg" alt="Advanced Icon result" loading="lazy"><figcaption>Icon</figcaption></figure>
+        <figure><img src="./fig/ilemselga_advanced.jpg" alt="Advanced Ilemselga result" loading="lazy"><figcaption>Ilemselga</figcaption></figure>
+        <figure><img src="./fig/melons_advanced.jpg" alt="Advanced Melons result" loading="lazy"><figcaption>Melons</figcaption></figure>
+        <figure><img src="./fig/religous_painting_advanced.jpg" alt="Advanced Religious Painting result" loading="lazy"><figcaption>Religious Painting</figcaption></figure>
+        <figure><img src="./fig/self_portrait_advanced.jpg" alt="Advanced Self Portrait result" loading="lazy"><figcaption>Self Portrait</figcaption></figure>
+        <figure><img src="./fig/siren_advanced.jpg" alt="Advanced Siren result" loading="lazy"><figcaption>Siren</figcaption></figure>
+        <figure><img src="./fig/three_generations_advanced.jpg" alt="Advanced Three Generations result" loading="lazy"><figcaption>Three Generations</figcaption></figure>
+        <figure><img src="./fig/wharf_advanced.jpg" alt="Advanced Wharf result" loading="lazy"><figcaption>Wharf</figcaption></figure>
+        <figure><img src="./fig/college_advanced.jpg" alt="Advanced College result" loading="lazy"><figcaption>College</figcaption></figure>
+        <figure><img src="./fig/Monrepos_advanced.jpg" alt="Advanced Monrepos result" loading="lazy"><figcaption>Monrepos</figcaption></figure>
+        <figure><img src="./fig/Petrozavodska_advanced.jpg" alt="Advanced Petrozavodska result" loading="lazy"><figcaption>Petrozavodska</figcaption></figure>
+      </div>
+    </section>
+
+  </main>
+</body>
+</html>
