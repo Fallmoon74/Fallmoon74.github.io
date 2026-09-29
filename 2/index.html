@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Project 2 | Fallmoon74 CS180 Portfolio</title>
+  <link rel="stylesheet" href="../style.css">
+  <style>
+    .wide-figure { margin: 18px 0 28px; }
+    .code-block { overflow-x: auto; padding: 14px 16px; border-radius: 8px; background: #f1f5f9; font-size: .85rem; }
+    .small-grid { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
+    .figure-grid img { max-height: 360px; object-fit: contain; background: #fafafa; }
+    .wide-figure img { max-height: none; }
+    details { margin: 18px 0; }
+    summary { cursor: pointer; color: #1d4ed8; }
+  </style>
+</head>
+<body>
+  <header class="site-header">
+    <div>
+      <p class="eyebrow">CS180 Project 2</p>
+      <h1>Fun with Filters and Frequencies</h1>
+    </div>
+  </header>
+
+  <main class="page">
+    <nav class="content-nav" aria-label="Project sections">
+      <a href="../index.html">Home</a>
+      <a href="#convolution">1.1 Convolution</a>
+      <a href="#differences">1.2 Edges</a>
+      <a href="#dog">1.3 DoG</a>
+      <a href="#sharpening">2.1 Sharpening</a>
+      <a href="#hybrids">2.2 Hybrids</a>
+      <a href="#stacks">2.3 Stacks</a>
+      <a href="#blending">2.4 Blending</a>
+    </nav>
+
+    <section id="convolution" class="panel writeup-section">
+      <p class="section-kicker">Part 1.1</p>
+      <h2>Convolutions from Scratch</h2>
+      <p>I implemented convolution with four nested loops, then with two loops and NumPy patch multiplication. Both flip the kernel and use zero padding, matching SciPy's <code>same</code>/<code>fill</code> output.</p>
+      <pre class="code-block"><code># Four-loop core (after flipping and padding the kernel/image)
+for row in range(height):
+    for col in range(width):
+        for kr in range(kernel_height):
+            for kc in range(kernel_width):
+                output[row, col] += padded[row + kr, col + kc] * kernel[kr, kc]
+
+# Two-loop core
+for row in range(height):
+    for col in range(width):
+        patch = padded[row:row + kernel_height, col:col + kernel_width]
+        output[row, col] = np.sum(patch * kernel)</code></pre>
+      <p>Both matched SciPy on a 200 × 200 crop. One run took 0.85 s, 0.072 s, and 0.0036 s (four loops, two loops, SciPy) respectively. Zero padding darkens the filtered borders, while reflection padding would not.</p>
+      <div class="figure-grid small-grid">
+        <figure><img src="./fig/result_1_1_1.webp" alt="Grayscale self portrait" loading="lazy"><figcaption>Grayscale self portrait</figcaption></figure>
+        <figure><img src="./fig/result_1_1_2.webp" alt="Self portrait after a 9 by 9 box filter" loading="lazy"><figcaption>9 × 9 box filter</figcaption></figure>
+        <figure><img src="./fig/result_1_1_3.webp" alt="Horizontal finite difference on the self portrait" loading="lazy"><figcaption>Horizontal difference, D<sub>x</sub></figcaption></figure>
+        <figure><img src="./fig/result_1_1_4.webp" alt="Vertical finite difference on the self portrait" loading="lazy"><figcaption>Vertical difference, D<sub>y</sub></figcaption></figure>
+      </div>
+      <p>The blur looks mild because the 9 × 9 kernel is tiny relative to the 4284 × 5712 photo. It removes fine pixel-scale detail, but that change is hard to see once the image is reduced for the webpage.</p>
+      <details><summary>Original color photograph</summary><figure class="single-figure"><img src="./fig/image_1_1.webp" alt="Original color self portrait" loading="lazy"><figcaption>Input photograph before grayscale conversion.</figcaption></figure></details>
+    </section>
+
+    <section id="differences" class="panel writeup-section">
+      <p class="section-kicker">Part 1.2</p>
+      <h2>Finite-Difference Edges</h2>
+      <p>I computed horizontal and vertical derivatives, then their gradient magnitude, <code>sqrt(Dx² + Dy²)</code>. Threshold <code>0.15</code> suppresses noise while retaining strong contours, at the cost of faint edges.</p>
+      <p><strong>Parameter tuning:</strong> I compared binary edges at different thresholds. Lower values kept more weak edges but also more speckles, and raising the threshold cleaned the background. I kept 0.15 as the balance for this image.</p>
+      <div class="figure-grid small-grid">
+        <figure><img src="./fig/result_1_2_1.webp" alt="Cameraman horizontal derivative" loading="lazy"><figcaption>D<sub>x</sub></figcaption></figure>
+        <figure><img src="./fig/result_1_2_2.webp" alt="Cameraman vertical derivative" loading="lazy"><figcaption>D<sub>y</sub></figcaption></figure>
+        <figure><img src="./fig/result_1_2_3.webp" alt="Cameraman gradient magnitude" loading="lazy"><figcaption>Gradient magnitude</figcaption></figure>
+        <figure><img src="./fig/result_1_2_4.webp" alt="Thresholded cameraman edges" loading="lazy"><figcaption>Binary edges, threshold 0.15</figcaption></figure>
+      </div>
+    </section>
+
+    <section id="dog" class="panel writeup-section">
+      <p class="section-kicker">Part 1.3</p>
+      <h2>Derivative of Gaussian</h2>
+      <p>A 9 × 9 Gaussian (σ = 1.5) comes from the outer product of a 1D kernel with itself. Blurring first reduces noisy edges, and threshold <code>0.06</code> retains the stronger smoothed contours.</p>
+      <p><strong>Parameter tuning:</strong> Smoothing reduces gradient magnitudes, so the 0.15 threshold from Part 1.2 would discard too many edges here. I used 0.06 after the 9 × 9, σ = 1.5 blur to keep the main contours while reducing noise.</p>
+      <div class="figure-grid small-grid">
+        <figure><img src="./fig/result_1_3_1.webp" alt="Two-dimensional Gaussian kernel" loading="lazy"><figcaption>2D Gaussian kernel</figcaption></figure>
+        <figure><img src="./fig/result_1_3_2.webp" alt="Blurred cameraman image" loading="lazy"><figcaption>Gaussian-smoothed image</figcaption></figure>
+        <figure><img src="./fig/result_1_3_3.webp" alt="Gradient magnitude after blurring" loading="lazy"><figcaption>Blur-then-differentiate magnitude</figcaption></figure>
+        <figure><img src="./fig/result_1_3_4.webp" alt="Binary edges after blurring" loading="lazy"><figcaption>Blur-then-differentiate edges</figcaption></figure>
+      </div>
+      <p>Compared with Part 1.2, the speckles in the grass largely disappear and the main silhouette is cleaner, but some faint texture edges are lost.</p>
+      <p>Convolving the Gaussian with D<sub>x</sub> and D<sub>y</sub> creates two DoG kernels. In the image interior, one DoG convolution matches blur-then-differentiate.</p>
+      <div class="figure-grid small-grid">
+        <figure><img src="./fig/result_1_3_5.webp" alt="Derivative of Gaussian filter in x" loading="lazy"><figcaption>DoG (x) filter</figcaption></figure>
+        <figure><img src="./fig/result_1_3_6.webp" alt="Derivative of Gaussian filter in y" loading="lazy"><figcaption>DoG (y) filter</figcaption></figure>
+        <figure><img src="./fig/result_1_3_7.webp" alt="Gradient magnitude using DoG filters" loading="lazy"><figcaption>DoG gradient magnitude</figcaption></figure>
+        <figure><img src="./fig/result_1_3_8.webp" alt="Binary edges using DoG filters" loading="lazy"><figcaption>DoG binary edges</figcaption></figure>
+      </div>
+    </section>
+
+    <section id="sharpening" class="panel writeup-section">
+      <p class="section-kicker">Part 2.1</p>
+      <h2>Unsharp Masking</h2>
+      <p>High frequencies equal <code>original − Gaussian blur</code>. The single unsharp filter <code>(1 + α)δ − αG</code> adds them back. Larger α strengthens edges but can introduce halos.</p>
+      <h3>Taj Mahal and Sharpening Strength</h3>
+      <div class="figure-grid small-grid">
+        <figure><img src="./fig/result_2_1_1.webp" alt="Original Taj Mahal image" loading="lazy"><figcaption>Original</figcaption></figure>
+        <figure><img src="./fig/result_2_1_2.webp" alt="Blurred Taj Mahal" loading="lazy"><figcaption>Low frequencies</figcaption></figure>
+        <figure><img src="./fig/result_2_1_3.webp" alt="Taj Mahal high frequency component" loading="lazy"><figcaption>High frequencies (shifted for display)</figcaption></figure>
+        <figure><img src="./fig/result_2_1_4.webp" alt="Taj sharpened with alpha 0.5" loading="lazy"><figcaption>α = 0.5</figcaption></figure>
+        <figure><img src="./fig/result_2_1_5.webp" alt="Taj sharpened with alpha 1" loading="lazy"><figcaption>α = 1</figcaption></figure>
+        <figure><img src="./fig/result_2_1_6.webp" alt="Taj sharpened with alpha 2" loading="lazy"><figcaption>α = 2</figcaption></figure>
+      </div>
+      <p><strong>Parameter tuning:</strong> I compared α = 0.5, 1, and 2 with the same 9 × 9 Gaussian (σ = 1.5). Stronger α makes architectural edges clearer but also amplifies halos and noise, and α = 1 is the middle setting used for the dog.</p>
+      <h3>Second Image: Blur, Sharpen, and Restore</h3>
+      <p>Sharpening the blurred dog emphasizes surviving edges but cannot restore lost detail.</p>
+      <div class="figure-grid small-grid">
+        <figure><img src="./fig/result_2_1_7.webp" alt="Original dog image" loading="lazy"><figcaption>Original dog</figcaption></figure>
+        <figure><img src="./fig/result_2_1_8.webp" alt="Blurred dog image" loading="lazy"><figcaption>Artificial blur</figcaption></figure>
+        <figure><img src="./fig/result_2_1_9.webp" alt="Dog image high frequencies" loading="lazy"><figcaption>High frequencies (shifted)</figcaption></figure>
+        <figure><img src="./fig/result_2_1_10.webp" alt="Sharpened original dog" loading="lazy"><figcaption>Sharpened original</figcaption></figure>
+        <figure><img src="./fig/result_2_1_11.webp" alt="Sharpened version of blurred dog" loading="lazy"><figcaption>Sharpened after blur</figcaption></figure>
+      </div>
+    </section>
+
+    <section id="hybrids" class="panel writeup-section">
+      <p class="section-kicker">Part 2.2</p>
+      <h2>Hybrid Images</h2>
+      <p>Each hybrid combines aligned high- and low-frequency images. Fine edges dominate nearby, and the low-frequency subject becomes clearer from farther away.</p>
+
+      <h3>Derek + Nutmeg</h3>
+      <p>Nutmeg: high-pass σ = 4, gain 1.5. Derek: low-pass σ = 8, weight 0.5.</p>
+      <p><strong>Parameter tuning:</strong> I adjusted the two cutoffs to make Nutmeg's details visible up close and Derek's face readable from afar. The 1.5 high-pass gain strengthened the faint cat edges, and the 0.5 low-pass weight kept them from being washed out.</p>
+      <div class="figure-grid small-grid">
+        <figure><img src="./fig/image_nutmeg.webp" alt="Original Nutmeg cat photograph" loading="lazy"><figcaption>Original Nutmeg (high-frequency input)</figcaption></figure>
+        <figure><img src="./fig/image_DerekPicture.webp" alt="Original Derek photograph" loading="lazy"><figcaption>Original Derek (low-frequency input)</figcaption></figure>
+        <figure><img src="./fig/result_2_2_1.webp" alt="Nutmeg high-pass component" loading="lazy"><figcaption>Aligned high-pass component</figcaption></figure>
+        <figure><img src="./fig/result_2_2_2.webp" alt="Derek low-pass component" loading="lazy"><figcaption>Aligned low-pass component</figcaption></figure>
+        <figure><img src="./fig/result_2_2_3.webp" alt="Derek and Nutmeg hybrid image" loading="lazy"><figcaption>Hybrid result</figcaption></figure>
+      </div>
+
+      <h3>Dog + Brad Pitt</h3>
+      <p>Dog: high-pass σ = 5. Portrait: low-pass σ = 2. Their mismatched shapes make alignment difficult.</p>
+      <p><strong>Parameter tuning:</strong> I used a stronger high-pass cutoff for the dog's texture and a smaller low-pass σ so the portrait did not become too diffuse. The remaining overlap issue comes from the different subject shapes, not just the filter settings.</p>
+      <div class="figure-grid small-grid">
+        <figure><img src="./fig/image_2_2_1.webp" alt="Original dog for custom hybrid" loading="lazy"><figcaption>Original dog</figcaption></figure>
+        <figure><img src="./fig/image_2_2_2.webp" alt="Original portrait for custom hybrid" loading="lazy"><figcaption>Original portrait</figcaption></figure>
+        <figure><img src="./fig/result_2_2_4.webp" alt="Dog high-pass component" loading="lazy"><figcaption>Aligned high-pass component</figcaption></figure>
+        <figure><img src="./fig/result_2_2_5.webp" alt="Portrait low-pass component" loading="lazy"><figcaption>Aligned low-pass component</figcaption></figure>
+        <figure><img src="./fig/result_2_2_6.webp" alt="Dog and portrait hybrid" loading="lazy"><figcaption>Hybrid result</figcaption></figure>
+      </div>
+
+      <h3>Eva + Shinji: Frequency Analysis</h3>
+      <p>Eva: high-pass σ = 4, gain 1.5. Shinji: low-pass σ = 2. This keeps Eva's lines and Shinji's broad face shape.</p>
+      <p><strong>Parameter tuning:</strong> I increased Eva's high-frequency contribution until her linework was visible without overpowering Shinji. A modest low-pass σ kept Shinji recognizable at reduced size.</p>
+      <div class="figure-grid small-grid">
+        <figure><img src="./fig/image_2_2_4.webp" alt="Original Eva illustration" loading="lazy"><figcaption>Original Eva (high-frequency input)</figcaption></figure>
+        <figure><img src="./fig/image_2_2_3.webp" alt="Original Shinji illustration" loading="lazy"><figcaption>Original Shinji (low-frequency input)</figcaption></figure>
+        <figure><img src="./fig/result_2_2_15.webp" alt="Aligned grayscale Eva image before high-pass filtering" loading="lazy"><figcaption>Aligned Eva, before filtering</figcaption></figure>
+        <figure><img src="./fig/result_2_2_16.webp" alt="Aligned grayscale Shinji image before low-pass filtering" loading="lazy"><figcaption>Aligned Shinji, before filtering</figcaption></figure>
+        <figure><img src="./fig/result_2_2_7.webp" alt="Eva high-pass output" loading="lazy"><figcaption>Aligned high-pass component</figcaption></figure>
+        <figure><img src="./fig/result_2_2_8.webp" alt="Shinji low-pass output" loading="lazy"><figcaption>Aligned low-pass component</figcaption></figure>
+        <figure><img src="./fig/result_2_2_9.webp" alt="Eva and Shinji hybrid" loading="lazy"><figcaption>Hybrid result</figcaption></figure>
+      </div>
+      <p>These log-magnitude FFTs show the aligned inputs, filters, and hybrid. High-pass filtering removes central energy, and low-pass filtering concentrates it.</p>
+      <div class="figure-grid small-grid">
+        <figure><img src="./fig/result_2_2_10.webp" alt="FFT magnitude of aligned high-frequency input" loading="lazy"><figcaption>Aligned Eva input FFT</figcaption></figure>
+        <figure><img src="./fig/result_2_2_11.webp" alt="FFT magnitude of aligned low-frequency input" loading="lazy"><figcaption>Aligned Shinji input FFT</figcaption></figure>
+        <figure><img src="./fig/result_2_2_12.webp" alt="FFT magnitude of high-pass component" loading="lazy"><figcaption>High-pass FFT</figcaption></figure>
+        <figure><img src="./fig/result_2_2_13.webp" alt="FFT magnitude of low-pass component" loading="lazy"><figcaption>Low-pass FFT</figcaption></figure>
+        <figure><img src="./fig/result_2_2_14.webp" alt="FFT magnitude of final hybrid" loading="lazy"><figcaption>Hybrid FFT</figcaption></figure>
+      </div>
+    </section>
+
+    <section id="stacks" class="panel writeup-section">
+      <p class="section-kicker">Part 2.3</p>
+      <h2>Gaussian and Laplacian Stacks</h2>
+      <p>Gaussian levels blur progressively, so don't downsampling. Laplacian levels subtract adjacent Gaussian images, and their sum, including the coarsest residual, get into the final blended image.</p>
+      <div class="figure-grid">
+        <figure><img src="./fig/image_apple.webp" alt="Original apple input" loading="lazy"><figcaption>Original apple</figcaption></figure>
+        <figure><img src="./fig/image_orange.webp" alt="Original orange input" loading="lazy"><figcaption>Original orange</figcaption></figure>
+      </div>
+      <figure class="wide-figure"><img src="./fig/result_2_3_stacks.webp" alt="All five Gaussian and Laplacian stack levels for the apple and orange" loading="lazy"><figcaption>Five levels of the apple and orange Gaussian and Laplacian stacks. Laplacian bands are shifted by +0.5 for display, and the last column is the low-frequency residual.</figcaption></figure>
+      <p>A blurred half-image mask mixes the apple and orange at each scale. The 4 × 3 grid recreates Figure 3.42, ending with the oraple.</p>
+      <figure class="wide-figure"><img src="./fig/result_2_3_figure.webp" alt="Twelve panels recreating the apple orange multiresolution blending figure" loading="lazy"><figcaption>(a–c) high frequencies, (d–f) middle frequencies, (g–i) low frequencies, (j–l) weighted images and final oraple.</figcaption></figure>
+      <details><summary>Open the 12 panels individually</summary>
+        <div class="figure-grid small-grid">
+          <figure><img src="./fig/result_2_3_1.webp" alt="Panel a apple high frequency" loading="lazy"><figcaption>(a) Apple, high</figcaption></figure>
+          <figure><img src="./fig/result_2_3_2.webp" alt="Panel b orange high frequency" loading="lazy"><figcaption>(b) Orange, high</figcaption></figure>
+          <figure><img src="./fig/result_2_3_3.webp" alt="Panel c combined high frequency" loading="lazy"><figcaption>(c) Combined, high</figcaption></figure>
+          <figure><img src="./fig/result_2_3_4.webp" alt="Panel d apple middle frequency" loading="lazy"><figcaption>(d) Apple, middle</figcaption></figure>
+          <figure><img src="./fig/result_2_3_5.webp" alt="Panel e orange middle frequency" loading="lazy"><figcaption>(e) Orange, middle</figcaption></figure>
+          <figure><img src="./fig/result_2_3_6.webp" alt="Panel f combined middle frequency" loading="lazy"><figcaption>(f) Combined, middle</figcaption></figure>
+          <figure><img src="./fig/result_2_3_7.webp" alt="Panel g apple low frequency" loading="lazy"><figcaption>(g) Apple, low</figcaption></figure>
+          <figure><img src="./fig/result_2_3_8.webp" alt="Panel h orange low frequency" loading="lazy"><figcaption>(h) Orange, low</figcaption></figure>
+          <figure><img src="./fig/result_2_3_9.webp" alt="Panel i combined low frequency" loading="lazy"><figcaption>(i) Combined, low</figcaption></figure>
+          <figure><img src="./fig/result_2_3_10.webp" alt="Panel j weighted apple reconstruction" loading="lazy"><figcaption>(j) Weighted apple</figcaption></figure>
+          <figure><img src="./fig/result_2_3_11.webp" alt="Panel k weighted orange reconstruction" loading="lazy"><figcaption>(k) Weighted orange</figcaption></figure>
+          <figure><img src="./fig/result_2_3_12.webp" alt="Panel l blended oraple" loading="lazy"><figcaption>(l) Oraple</figcaption></figure>
+        </div>
+      </details>
+    </section>
+
+    <section id="blending" class="panel writeup-section">
+      <p class="section-kicker">Part 2.4</p>
+      <h2>Multiresolution Blending</h2>
+      <p>Each image contributes a Laplacian stack, and the mask contributes a Gaussian stack. Weighted bands combine at each level, then sum into the final image. As the result, Sharp high-frequency masks preserve detail and broad low-frequency masks soften color and lighting seams.</p>
+
+      <h3>Vertical Seam: Shinji + Eva</h3>
+      <p>The direct center cut is obvious, and multiresolution blending softens it a little.</p>
+      <p><strong>Parameter tuning:</strong> Six levels with mask blur starting at σ = 2 keep the fine seam relatively sharp while widening the transition for color and lighting at coarser levels.</p>
+      <div class="figure-grid small-grid">
+        <figure><img src="./fig/result_2_4_1.webp" alt="Shinji input for vertical seam blend" loading="lazy"><figcaption>Image A: Shinji</figcaption></figure>
+        <figure><img src="./fig/result_2_4_2.webp" alt="Eva input for vertical seam blend" loading="lazy"><figcaption>Image B: Eva</figcaption></figure>
+        <figure><img src="./fig/result_2_4_3.webp" alt="Vertical half-image mask" loading="lazy"><figcaption>Vertical mask</figcaption></figure>
+        <figure><img src="./fig/result_2_4_4.webp" alt="Direct vertical composite" loading="lazy"><figcaption>Direct cut</figcaption></figure>
+        <figure><img src="./fig/result_2_4_5.webp" alt="Multiresolution vertical composite" loading="lazy"><figcaption>Multiresolution blend</figcaption></figure>
+      </div>
+
+      <h3>Irregular Mask 1: Cosmic Eye</h3>
+      <p>The mask follows the iris but excludes the pupil. Blending softens the direct composite's sticker-like border.</p>
+      <p><strong>Parameter tuning:</strong> I tried moon first, but the image has unwanted cloud edges, and only moon is far more different from the night sky, thus the result was unsatisfactory. I switched to an iris-shaped mask. For the smaller eye region, five levels and a narrower starting mask blur (σ = 1.5) soften the boundary without spreading the nebula across the whole eye.</p>
+      <div class="figure-grid small-grid">
+        <figure><img src="./fig/result_2_4_6.webp" alt="Colorful Hubble nebula input" loading="lazy"><figcaption>Image A: nebula</figcaption></figure>
+        <figure><img src="./fig/result_2_4_7.webp" alt="Close-up blue eye input" loading="lazy"><figcaption>Image B: eye</figcaption></figure>
+        <figure><img src="./fig/result_2_4_8.webp" alt="Irregular iris mask excluding pupil" loading="lazy"><figcaption>Iris mask</figcaption></figure>
+        <figure><img src="./fig/result_2_4_9.webp" alt="Direct nebula iris composite" loading="lazy"><figcaption>Direct replacement</figcaption></figure>
+        <figure><img src="./fig/result_2_4_10.webp" alt="Multiresolution cosmic eye" loading="lazy"><figcaption>Multiresolution blend</figcaption></figure>
+      </div>
+
+      <h3>Irregular Mask 2: Universe Between the Hands</h3>
+      <p>The mask follows the heart-shaped opening. Blending softens its sky-to-nebula edge without changing the hands.</p>
+      <p><strong>Parameter tuning:</strong> I kept the opening inside the hands and used the six-level, σ = 2 mask schedule. This blends the sky and nebula at broad scales while leaving the hand contours intact.</p>
+      <div class="figure-grid small-grid">
+        <figure><img src="./fig/result_2_4_11.webp" alt="Nebula input for hand composition" loading="lazy"><figcaption>Image A: nebula</figcaption></figure>
+        <figure><img src="./fig/result_2_4_12.webp" alt="Two hands forming a heart against sky" loading="lazy"><figcaption>Image B: hands</figcaption></figure>
+        <figure><img src="./fig/result_2_4_13.webp" alt="Heart-shaped hand opening mask" loading="lazy"><figcaption>Hand-opening mask</figcaption></figure>
+        <figure><img src="./fig/result_2_4_14.webp" alt="Direct universe between hands composite" loading="lazy"><figcaption>Direct replacement</figcaption></figure>
+        <figure><img src="./fig/result_2_4_15.webp" alt="Multiresolution universe between hands" loading="lazy"><figcaption>Multiresolution blend</figcaption></figure>
+      </div>
+      <p>Selected Laplacian levels show each masked input and their sum.</p>
+      <div class="figure-grid">
+        <figure><img src="./fig/result_2_4_process.webp" alt="Three Laplacian levels of cosmic eye blend" loading="lazy"><figcaption>Cosmic eye: levels 0, 2, and 4.</figcaption></figure>
+        <figure><img src="./fig/result_2_4_hand_process.webp" alt="Three Laplacian levels of hand universe blend" loading="lazy"><figcaption>Hands: levels 0, 2, and 5.</figcaption></figure>
+      </div>
+      <details><summary>Open the three examples in one comparison figure</summary><figure class="wide-figure"><img src="./fig/result_2_4_figure.webp" alt="Three rows showing inputs masks direct composites and blended outputs" loading="lazy"><figcaption>From top to bottom: straight seam, cosmic eye, and universe between the hands.</figcaption></figure></details>
+    </section>
+
+    <section id="reference" class="panel writeup-section"></section>
+      <h3>Image Credits</h3>
+      <p>Eye: <a href="https://commons.wikimedia.org/wiki/File:Close_up_shot_of_the_human_eye,_9_August_2024.jpg">Kookaaa (CC0)</a>. Nebula: <a href="https://commons.wikimedia.org/wiki/File:Nebulae_Hubble_NASA.jpg">NASA/ESA/Hubble SM4 ERO Team</a>. Hands: <a href="https://commons.wikimedia.org/wiki/File:Two_left_hands_forming_a_heart_shape.jpg">Leon Brocard (CC BY 2.0)</a>, cropped and resized. Course samples and other project inputs are shown above.</p>
+    </section>
+  </main>
+</body>
+</html>
