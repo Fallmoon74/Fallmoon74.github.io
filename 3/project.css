@@ -1,0 +1,32 @@
+.wide-figure { margin: 18px 0 28px; }
+.figure-grid img { max-height: 360px; object-fit: contain; background: #fafafa; }
+.wide-figure img { max-height: none; }
+
+.part-header {
+  margin: 32px 0 20px;
+  scroll-margin-top: 20px;
+}
+
+.part-header h2 { margin: 0 0 8px; }
+.part-header > p:last-of-type { margin: 0 0 18px; }
+.project-section { scroll-margin-top: 20px; }
+.figure-stack, .figure-grid > *, figure { min-width: 0; }
+.result-link { display: block; }
+
+.hybrid-pair { align-items: center; }
+.distant-view .result-link { display: grid; place-items: center; min-height: 170px; }
+.distant-view .result-link img { width: 64px; height: 64px; max-height: none; border: 0; border-radius: 0; }
+.distant-view figcaption { text-align: center; }
+
+.source-links { display: flex; gap: 12px; flex-wrap: wrap; }
+.source-links a { color: #1d4ed8; }
+.page-footer { margin-top: 20px; padding-top: 20px; border-top: 1px solid #e5e7eb; }
+
+@media print {
+  @page { size: A4 portrait; margin: 14mm; }
+  body { background: #fff; }
+  .site-header, .page { max-width: none; padding: 12px 0; }
+  .content-nav, .back-to-top { display: none; }
+  figure { break-inside: avoid; }
+  h2, h3, .section-kicker { break-after: avoid; }
+}

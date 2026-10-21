@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="CS180 Project 3: exploring pretrained flow models and training flow matching models on MNIST.">
+  <title>Project 3 | Fallmoon74 CS180 Portfolio</title>
+  <link rel="stylesheet" href="../style.css">
+  <link rel="stylesheet" href="./project.css">
+  <script>
+    window.MathJax = {
+      tex: {
+        inlineMath: [['\\(', '\\)']],
+        displayMath: [['\\[', '\\]']]
+      }
+    };
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</head>
+<body>
+  <header class="site-header" id="top">
+    <p class="eyebrow">CS180 Project 3</p>
+    <h1>Flow Matching</h1>
+    <p class="lede">Exploring pretrained flow models and learning to generate MNIST digits</p>
+  </header>
+
+  <main class="page">
+    <nav class="content-nav" aria-label="Project navigation">
+      <a href="../index.html">Home</a>
+      <a href="#part-a">Part A · Exploring Flow Models</a>
+      <a href="#part-b">Part B · Flow Matching from Scratch</a>
+    </nav>
+
+    <div class="part-header" id="part-a">
+      <p class="section-kicker">Part A</p>
+      <h2>Exploring the Power of Flow Models</h2>
+      <p>Denoising, guided generation, image editing, and optical illusions.</p>
+      <nav class="content-nav" aria-label="Part A sections">
+        <a href="#a-1-1">1.1 Noisy Inputs</a>
+        <a href="#a-1-2">1.2 Gaussian Denoising</a>
+        <a href="#a-1-3">1.3 One-Step Denoising</a>
+        <a href="#a-1-4">1.4 Velocity Visualization</a>
+        <a href="#a-1-5">1.5 Euler Sampling</a>
+        <a href="#a-1-6">1.6 Generation from Noise</a>
+        <a href="#a-2-1">2.1 Classifier-Free Guidance</a>
+        <a href="#a-3-1">3.1 Image-to-Image Editing</a>
+        <a href="#a-3-2">3.2 Text-Guided Editing</a>
+        <a href="#a-3-3">3.3 Visual Anagrams</a>
+        <a href="#a-3-4">3.4 Hybrid Images</a>
+      </nav>
+    </div>
+
+    <section class="panel writeup-section project-section" id="a-1-1">
+      <p class="section-kicker">Part A · 1.1</p>
+      <h2>Constructing Noisy Training Inputs</h2>
+      <figure class="wide-figure" data-image="./fig/parta/training_inputs.png">
+        <a class="result-link" href="./fig/parta/training_inputs.png" target="_blank" rel="noopener" aria-label="Open full-size: Original and noisy inputs"><img src="./fig/parta/training_inputs.png" alt="Original and noisy inputs" width="1760" height="440" loading="lazy" decoding="async"></a>
+        <figcaption>Original photograph and three interpolated inputs, labeled by time.</figcaption>
+      </figure>
+      <p>I construct the noisy input by linear interpolation, reusing the same Gaussian noise at all three times:</p>
+      <div class="formula">
+        \[
+        x_t = (1-t)\epsilon + tx_1, \qquad \epsilon \sim \mathcal{N}(0,I).
+        \]
+      </div>
+      <p>As t increases, the face, shirt, and background become easier to distinguish because the image contribution grows while the noise contribution shrinks. Thus t = 0 is pure noise and t = 1 is the clean image.</p>
+    </section>
+
+    <section class="panel writeup-section project-section" id="a-1-2">
+      <p class="section-kicker">Part A · 1.2</p>
+      <h2>Classical Denoising</h2>
+      <div class="figure-grid three-up">
+        <figure data-image="./fig/parta/blur_0.25.png"><a class="result-link" href="./fig/parta/blur_0.25.png" target="_blank" rel="noopener" aria-label="Open full-size: Noisy input / Gaussian blur"><img src="./fig/parta/blur_0.25.png" alt="Noisy input / Gaussian blur" width="880" height="440" loading="lazy" decoding="async"></a><figcaption>t = 0.25</figcaption></figure>
+        <figure data-image="./fig/parta/blur_0.5.png"><a class="result-link" href="./fig/parta/blur_0.5.png" target="_blank" rel="noopener" aria-label="Open full-size: Noisy input / Gaussian blur"><img src="./fig/parta/blur_0.5.png" alt="Noisy input / Gaussian blur" width="880" height="440" loading="lazy" decoding="async"></a><figcaption>t = 0.50</figcaption></figure>
+        <figure data-image="./fig/parta/blur_0.75.png"><a class="result-link" href="./fig/parta/blur_0.75.png" target="_blank" rel="noopener" aria-label="Open full-size: Noisy input / Gaussian blur"><img src="./fig/parta/blur_0.75.png" alt="Noisy input / Gaussian blur" width="880" height="440" loading="lazy" decoding="async"></a><figcaption>t = 0.75</figcaption></figure>
+      </div>
+      <p>The Gaussian baseline is:</p>
+      <div class="formula">
+        \[
+        \frac{x_t}{t}=x_1+\frac{1-t}{t}\epsilon,
+        \qquad \hat{x}_1^{\mathrm{blur}}=G_\sigma\!\left(\frac{x_t}{t}\right).
+        \]
+      </div>
+      <p>Gaussian averaging suppresses noise while also smoothing edges and texture. Among σ = 1, 2, 4, 8, 16, the lowest-MSE choices are 8, 4, and 2 for t = 0.25, 0.50, and 0.75 respectively: stronger noise requires more blur, leaving only edge structure at t = 0.25.</p>
+    </section>
+
+    <section class="panel writeup-section project-section" id="a-1-3">
+      <p class="section-kicker">Part A · 1.3</p>
+      <h2>One-Step Denoising</h2>
+      <p class="parameters">a high quality photo</p>
+      <div class="figure-stack">
+<figure class="wide-figure" data-image="./fig/parta/one_step_0.25.png"><a class="result-link" href="./fig/parta/one_step_0.25.png" target="_blank" rel="noopener" aria-label="Open full-size: Original / noisy input / one-step estimate"><img src="./fig/parta/one_step_0.25.png" alt="Original / noisy input / one-step estimate" width="1320" height="440" loading="lazy" decoding="async"></a><figcaption>t = 0.25</figcaption></figure>
+      <figure class="wide-figure" data-image="./fig/parta/one_step_0.5.png"><a class="result-link" href="./fig/parta/one_step_0.5.png" target="_blank" rel="noopener" aria-label="Open full-size: Original / noisy input / one-step estimate"><img src="./fig/parta/one_step_0.5.png" alt="Original / noisy input / one-step estimate" width="1320" height="440" loading="lazy" decoding="async"></a><figcaption>t = 0.50</figcaption></figure>
+      <figure class="wide-figure" data-image="./fig/parta/one_step_0.75.png"><a class="result-link" href="./fig/parta/one_step_0.75.png" target="_blank" rel="noopener" aria-label="Open full-size: Original / noisy input / one-step estimate"><img src="./fig/parta/one_step_0.75.png" alt="Original / noisy input / one-step estimate" width="1320" height="440" loading="lazy" decoding="async"></a><figcaption>t = 0.75</figcaption></figure>
+      </div>
+
+      <p>The model predicts velocity, and the prediction is:</p>
+      <div class="formula">
+        \[
+        \hat{x}_1=x_t+(1-t)v_\theta(x_t,t,c).
+        \]
+      </div>
+      <p>This single prediction recovers more recognizable facial and clothing structure than Gaussian blur by using learned image patterns. At t = 0.25, however, the hair becomes a hat-like shape; with less surviving evidence, plausible reconstruction can differ from the original photograph.</p>
+    </section>
+
+    <section class="panel writeup-section project-section" id="a-1-4">
+      <p class="section-kicker">Part A · 1.4</p>
+      <h2>Visualizing Velocity</h2>
+      <div class="figure-stack">
+<figure class="single-figure" data-image="./fig/parta/velocity_original.png"><a class="result-link" href="./fig/parta/velocity_original.png" target="_blank" rel="noopener" aria-label="Open full-size: Original photograph"><img src="./fig/parta/velocity_original.png" alt="Original photograph" width="512" height="512" loading="lazy" decoding="async"></a><figcaption>Reference image for all three times.</figcaption></figure>
+<div class="velocity-maps">
+<figure class="wide-figure" data-image="./fig/parta/velocity_0.25.png"><a class="result-link" href="./fig/parta/velocity_0.25.png" target="_blank" rel="noopener" aria-label="Open full-size: Noisy input / predicted update / ground-truth update / RMS error"><img src="./fig/parta/velocity_0.25.png" alt="Noisy input / predicted update / ground-truth update / RMS error" width="1760" height="440" loading="lazy" decoding="async"></a><figcaption>t = 0.25</figcaption></figure>
+<figure class="wide-figure" data-image="./fig/parta/velocity_0.50.png"><a class="result-link" href="./fig/parta/velocity_0.50.png" target="_blank" rel="noopener" aria-label="Open full-size: Noisy input / predicted update / ground-truth update / RMS error"><img src="./fig/parta/velocity_0.50.png" alt="Noisy input / predicted update / ground-truth update / RMS error" width="1760" height="440" loading="lazy" decoding="async"></a><figcaption>t = 0.50</figcaption></figure>
+<figure class="wide-figure" data-image="./fig/parta/velocity_0.75.png"><a class="result-link" href="./fig/parta/velocity_0.75.png" target="_blank" rel="noopener" aria-label="Open full-size: Noisy input / predicted update / ground-truth update / RMS error"><img src="./fig/parta/velocity_0.75.png" alt="Noisy input / predicted update / ground-truth update / RMS error" width="1760" height="440" loading="lazy" decoding="async"></a><figcaption>t = 0.75</figcaption></figure>
+</div>
+</div>
+      <p>I compare the predicted endpoint update with the known correction and compute their per-pixel RGB RMS error before clipping:</p>
+      <div class="formula">
+        \[
+        \begin{aligned}
+        \Delta_{\mathrm{pred}}&=(1-t)v_\theta(x_t,t,c),\\
+        \Delta_{\mathrm{gt}}&=(1-t)(x_1-\epsilon)=x_1-x_t,\\
+        E_t(p)&=\sqrt{\frac{1}{3}\sum_{k\in\{R,G,B\}}
+        \left[\Delta_{\mathrm{pred}}(p,k)-\Delta_{\mathrm{gt}}(p,k)\right]^2}.
+        \end{aligned}
+        \]
+      </div>
+      <p>These are corrections, including noise cancellation, rather than finished photographs. With shared display scales, errors highlight the face, clothing, and boundaries; the darker t = 0.75 map indicates a smaller endpoint-update error, which also includes the shrinking factor \((1-t)\).</p>
+    </section>
+
+    <section class="panel writeup-section project-section" id="a-1-5">
+      <p class="section-kicker">Part A · 1.5</p>
+      <h2>Iterative Denoising with Euler Sampling</h2>
+      <p class="parameters">Start at t = 0.50 / step size = 0.02 / 25 updates</p>
+      <div class="figure-stack">
+<figure class="wide-figure" data-image="./fig/parta/trajectory.png"><a class="result-link" href="./fig/parta/trajectory.png" target="_blank" rel="noopener" aria-label="Open full-size: Denoising trajectory"><img src="./fig/parta/trajectory.png" alt="Denoising trajectory" width="1320" height="880" loading="lazy" decoding="async"></a><figcaption>t = 0.50, 0.60, 0.70, 0.80, 0.90, 1.00</figcaption></figure>
+      <figure class="wide-figure" data-image="./fig/parta/comparison.png"><a class="result-link" href="./fig/parta/comparison.png" target="_blank" rel="noopener" aria-label="Open full-size: Original / Gaussian blur / one-step / Euler"><img src="./fig/parta/comparison.png" alt="Original / Gaussian blur / one-step / Euler" width="1760" height="440" loading="lazy" decoding="async"></a><figcaption>Four-way comparison using the same noisy input.</figcaption></figure>
+      </div>
+
+      <p>Euler sampling recomputes the velocity at each new state, allowing the trajectory to change direction:</p>
+      <div class="formula">
+        \[
+        x_{t+h}=x_t+h\,v_\theta(x_t,t,c).
+        \]
+      </div>
+      <p>Across 25 steps, noise recedes and hair, clothing, and background details sharpen. For this input, reconstruction MSE is 0.01877 for blur, 0.00538 for one step, and 0.00645 for Euler: sharper detail doesn't mean closer to the original picture.</p>
+    </section>
+
+    <section class="panel writeup-section project-section" id="a-1-6">
+      <p class="section-kicker">Part A · 1.6</p>
+      <h2>Generating Images from Noise</h2>
+      <p class="parameters">Prompt: “a high quality photo” / ordinary conditional sampling</p>
+      <div class="figure-grid">
+        <figure data-image="./fig/parta/conditional_0.png"><a class="result-link" href="./fig/parta/conditional_0.png" target="_blank" rel="noopener" aria-label="Open full-size: Sample 1"><img src="./fig/parta/conditional_0.png" alt="Sample 1" width="512" height="512" loading="lazy" decoding="async"></a><figcaption>Seed 180</figcaption></figure>
+        <figure data-image="./fig/parta/conditional_1.png"><a class="result-link" href="./fig/parta/conditional_1.png" target="_blank" rel="noopener" aria-label="Open full-size: Sample 2"><img src="./fig/parta/conditional_1.png" alt="Sample 2" width="512" height="512" loading="lazy" decoding="async"></a><figcaption>Seed 181</figcaption></figure>
+        <figure data-image="./fig/parta/conditional_2.png"><a class="result-link" href="./fig/parta/conditional_2.png" target="_blank" rel="noopener" aria-label="Open full-size: Sample 3"><img src="./fig/parta/conditional_2.png" alt="Sample 3" width="512" height="512" loading="lazy" decoding="async"></a><figcaption>Seed 182</figcaption></figure>
+        <figure data-image="./fig/parta/conditional_3.png"><a class="result-link" href="./fig/parta/conditional_3.png" target="_blank" rel="noopener" aria-label="Open full-size: Sample 4"><img src="./fig/parta/conditional_3.png" alt="Sample 4" width="512" height="512" loading="lazy" decoding="async"></a><figcaption>Seed 183</figcaption></figure>
+        <figure data-image="./fig/parta/conditional_4.png"><a class="result-link" href="./fig/parta/conditional_4.png" target="_blank" rel="noopener" aria-label="Open full-size: Sample 5"><img src="./fig/parta/conditional_4.png" alt="Sample 5" width="512" height="512" loading="lazy" decoding="async"></a><figcaption>Seed 184</figcaption></figure>
+      </div>
+      <p>Starting Euler integration at t = 0 turns independent Gaussian noise into images without an input photograph. Despite the generic prompt, all five samples depict people, suggesting that it may have a preference in the learned conditional distribution. Appearance varies across seeds, but several faces and bodies are malformed; ordinary conditional sampling provides neither guaranteed realism nor broad subject diversity in this small sample.</p>
+    </section>
+
+    <section class="panel writeup-section project-section" id="a-2-1">
+      <p class="section-kicker">Part A · 2.1</p>
+      <h2>Classifier-Free Guidance</h2>
+      <p class="parameters">w = 7 / step size = 0.02 / same initial noises as 1.6</p>
+      <div class="figure-grid">
+        <figure data-image="./fig/parta/cfg_0.png"><a class="result-link" href="./fig/parta/cfg_0.png" target="_blank" rel="noopener" aria-label="Open full-size: CFG sample 1"><img src="./fig/parta/cfg_0.png" alt="CFG sample 1" width="512" height="512" loading="lazy" decoding="async"></a><figcaption>Seed 180</figcaption></figure>
+        <figure data-image="./fig/parta/cfg_1.png"><a class="result-link" href="./fig/parta/cfg_1.png" target="_blank" rel="noopener" aria-label="Open full-size: CFG sample 2"><img src="./fig/parta/cfg_1.png" alt="CFG sample 2" width="512" height="512" loading="lazy" decoding="async"></a><figcaption>Seed 181</figcaption></figure>
+        <figure data-image="./fig/parta/cfg_2.png"><a class="result-link" href="./fig/parta/cfg_2.png" target="_blank" rel="noopener" aria-label="Open full-size: CFG sample 3"><img src="./fig/parta/cfg_2.png" alt="CFG sample 3" width="512" height="512" loading="lazy" decoding="async"></a><figcaption>Seed 182</figcaption></figure>
+        <figure data-image="./fig/parta/cfg_3.png"><a class="result-link" href="./fig/parta/cfg_3.png" target="_blank" rel="noopener" aria-label="Open full-size: CFG sample 4"><img src="./fig/parta/cfg_3.png" alt="CFG sample 4" width="512" height="512" loading="lazy" decoding="async"></a><figcaption>Seed 183</figcaption></figure>
+        <figure data-image="./fig/parta/cfg_4.png"><a class="result-link" href="./fig/parta/cfg_4.png" target="_blank" rel="noopener" aria-label="Open full-size: CFG sample 5"><img src="./fig/parta/cfg_4.png" alt="CFG sample 5" width="512" height="512" loading="lazy" decoding="async"></a><figcaption>Seed 184</figcaption></figure>
+      </div>
+      <p>I combine conditional and empty-prompt predictions to strengthen the direction associated with the text:</p>
+      <div class="formula">
+        \[
+        v_{\mathrm{CFG}}=v_c+w(v_c-v_u), \qquad w=7.
+        \]
+      </div>
+      <p>With the same initial noises as 1.6, all five outputs now have recognizable faces and more coherent portrait structure. They also favor similar polished portrait compositions: guidance improves these samples while narrowing their visual variety, and can change identity and composition rather than merely sharpening an existing image.</p>
+    </section>
+
+    <section class="panel writeup-section project-section" id="a-3-1">
+      <p class="section-kicker">Part A · 3.1</p>
+      <h2>Image-to-Image Editing</h2>
+      <p class="parameters">Prompt: “a high quality photo” / starting t = 0.02, 0.04, 0.06, 0.10, 0.14, 0.25, 0.50</p>
+      <h3>Campanile and Personal Photographs</h3>
+      <div class="figure-stack">
+<figure class="wide-figure" data-image="./fig/parta/edit_campanile.png"><a class="result-link" href="./fig/parta/edit_campanile.png" target="_blank" rel="noopener" aria-label="Open full-size: Campanile · original and seven edits"><img src="./fig/parta/edit_campanile.png" alt="Campanile · original and seven edits" width="1593" height="811" loading="lazy" decoding="async"></a><figcaption>Campanile</figcaption></figure>
+      <figure class="wide-figure" data-image="./fig/parta/edit_my_image_1.png"><a class="result-link" href="./fig/parta/edit_my_image_1.png" target="_blank" rel="noopener" aria-label="Open full-size: Personal photograph 1 · original and seven edits"><img src="./fig/parta/edit_my_image_1.png" alt="Personal photograph 1 · original and seven edits" width="1593" height="811" loading="lazy" decoding="async"></a><figcaption>Personal photograph 1</figcaption></figure>
+      <figure class="wide-figure" data-image="./fig/parta/edit_my_image_2.png"><a class="result-link" href="./fig/parta/edit_my_image_2.png" target="_blank" rel="noopener" aria-label="Open full-size: Personal photograph 2 · original and seven edits"><img src="./fig/parta/edit_my_image_2.png" alt="Personal photograph 2 · original and seven edits" width="1760" height="880" loading="lazy" decoding="async"></a><figcaption>Personal photograph 2</figcaption></figure>
+      </div>
+
+      <h3>Web Image and Hand-Drawn Inputs</h3>
+      <div class="figure-stack">
+<figure class="wide-figure" data-image="./fig/parta/edit_web_image.png"><a class="result-link" href="./fig/parta/edit_web_image.png" target="_blank" rel="noopener" aria-label="Open full-size: Web image · original and seven edits"><img src="./fig/parta/edit_web_image.png" alt="Web image · original and seven edits" width="1760" height="880" loading="lazy" decoding="async"></a><figcaption>Web image</figcaption></figure>
+      <figure class="wide-figure" data-image="./fig/parta/edit_drawing_1.png"><a class="result-link" href="./fig/parta/edit_drawing_1.png" target="_blank" rel="noopener" aria-label="Open full-size: Drawing 1 · original and seven edits"><img src="./fig/parta/edit_drawing_1.png" alt="Drawing 1 · original and seven edits" width="1593" height="811" loading="lazy" decoding="async"></a><figcaption>Hand-drawn image 1</figcaption></figure>
+      <figure class="wide-figure" data-image="./fig/parta/edit_drawing_2.png"><a class="result-link" href="./fig/parta/edit_drawing_2.png" target="_blank" rel="noopener" aria-label="Open full-size: Drawing 2 · original and seven edits"><img src="./fig/parta/edit_drawing_2.png" alt="Drawing 2 · original and seven edits" width="1593" height="811" loading="lazy" decoding="async"></a><figcaption>Hand-drawn image 2</figcaption></figure>
+      </div>
+
+      <p>Editing first mixes the input with noise, then follows the guided flow from \(t_{\mathrm{start}}\) to 1. Small starting times erase more evidence and permit larger changes; larger times preserve the tower, faces, and scenery. The web image becomes a photographic person at low t but retains its anime style at high t. For the sparse drawings, low t mostly yields pale surfaces or unrelated objects, while high t preserves line art.</p>
+    </section>
+
+    <section class="panel writeup-section project-section" id="a-3-2">
+      <p class="section-kicker">Part A · 3.2</p>
+      <h2>Text-Guided Image Editing</h2>
+      <p class="parameters">Same three inputs and seven starting times as 3.1</p>
+
+      <div class="figure-stack edit-grid">
+        <div>
+<h3>Campanile</h3>
+      <p class="parameters">Prompt: “a photograph of a rocket on a launch pad”</p>
+      <figure class="wide-figure" data-image="./fig/parta/text_edit_campanile.png"><a class="result-link" href="./fig/parta/text_edit_campanile.png" target="_blank" rel="noopener" aria-label="Open full-size: Campanile · original and seven text-guided edits"><img src="./fig/parta/text_edit_campanile.png" alt="Campanile · original and seven text-guided edits" width="1760" height="880" loading="lazy" decoding="async"></a><figcaption>Campanile → rocket</figcaption></figure>
+        </div>
+        <div>
+<h3>Personal Photograph 1</h3>
+      <p class="parameters">Prompt: “a photograph of an astronaut wearing a white spacesuit inside a space station”</p>
+      <figure class="wide-figure" data-image="./fig/parta/text_edit_my_image_1.png"><a class="result-link" href="./fig/parta/text_edit_my_image_1.png" target="_blank" rel="noopener" aria-label="Open full-size: Personal photograph 1 · original and seven text-guided edits"><img src="./fig/parta/text_edit_my_image_1.png" alt="Personal photograph 1 · original and seven text-guided edits" width="1760" height="880" loading="lazy" decoding="async"></a><figcaption>Personal photograph 1 → astronaut</figcaption></figure>
+        </div>
+        <div>
+<h3>Personal Photograph 2</h3>
+      <p class="parameters">Prompt: “a photograph of a hiker in a snowy mountain landscape”</p>
+      <figure class="wide-figure" data-image="./fig/parta/text_edit_my_image_2.png"><a class="result-link" href="./fig/parta/text_edit_my_image_2.png" target="_blank" rel="noopener" aria-label="Open full-size: Personal photograph 2 · original and seven text-guided edits"><img src="./fig/parta/text_edit_my_image_2.png" alt="Personal photograph 2 · original and seven text-guided edits" width="1760" height="880" loading="lazy" decoding="async"></a><figcaption>Personal photograph 2 → snowy mountain hiker</figcaption></figure>
+        </div>
+      </div>
+
+      <p>Changing the text changes the guided velocity field while retaining the same noising-and-sampling procedure. Low starting times produce a rocket, a spacesuited astronaut, and a snowy hiker; intermediate times retain more of the tower silhouette or portrait framing. At t = 0.50, the original images largely dominate. Compared with the generic prompt, specific text directs the new content, while the surviving input controls how far that content can depart from the original.</p>
+    </section>
+
+    <section class="panel writeup-section project-section" id="a-3-3">
+      <p class="section-kicker">Part A · 3.3</p>
+      <h2>Visual Anagrams</h2>
+      <div class="figure-stack">
+<figure class="wide-figure" data-image="./fig/parta/anagram_views_0.png"><a class="result-link" href="./fig/parta/anagram_views_0.png" target="_blank" rel="noopener" aria-label="Open full-size: Illusion 1 · upright and rotated 180°"><img src="./fig/parta/anagram_views_0.png" alt="Illusion 1 · upright and rotated 180°" width="880" height="440" loading="lazy" decoding="async"></a><figcaption>Old man / people around a campfire · prompt labels with both views</figcaption></figure>
+      <figure class="wide-figure" data-image="./fig/parta/anagram_views_1.png"><a class="result-link" href="./fig/parta/anagram_views_1.png" target="_blank" rel="noopener" aria-label="Open full-size: Illusion 2 · upright and rotated 180°"><img src="./fig/parta/anagram_views_1.png" alt="Illusion 2 · upright and rotated 180°" width="880" height="440" loading="lazy" decoding="async"></a><figcaption>Snowy mountain village / horse · prompt labels with both views</figcaption></figure>
+      </div>
+
+      <p>At every Euler step, I average one guided velocity with a second predicted on the 180°-rotated image and rotated back into the original coordinates. Both prompts therefore shape the same pixels throughout sampling. The old man's illuminated forehead becomes the campfire after rotation, with surrounding facial shapes becoming figures. The village/horse pair also changes interpretation, although the horse is clearer than the village. Shared contours make both readings coexist.</p>
+    </section>
+
+    <section class="panel writeup-section project-section" id="a-3-4">
+      <p class="section-kicker">Part A · 3.4</p>
+      <h2>Hybrid Images</h2>
+      <p class="parameters">Low-pass Gaussian: kernel = 265, σ = 16 at 512 × 512</p>
+      <div class="figure-stack">
+<div class="hybrid-card"><h3>Skull / Waterfall</h3><div class="figure-grid hybrid-pair"><figure data-image="./fig/parta/hybrid_0.png"><a class="result-link" href="./fig/parta/hybrid_0.png" target="_blank" rel="noopener" aria-label="Open full-size: Hybrid 1 · full-size view"><img src="./fig/parta/hybrid_0.png" alt="Hybrid 1 · full-size view" width="512" height="512" loading="lazy" decoding="async"></a><figcaption>Near view: waterfall</figcaption></figure><figure class="distant-view" data-image="./fig/parta/hybrid_0_distant.png"><a class="result-link" href="./fig/parta/hybrid_0_distant.png" target="_blank" rel="noopener" aria-label="Open full-size: Hybrid 1 · distant view"><img src="./fig/parta/hybrid_0_distant.png" alt="Hybrid 1 · distant view" width="64" height="64" loading="lazy" decoding="async"></a><figcaption>Distant view: skull</figcaption></figure></div></div>
+<div class="hybrid-card"><h3>Cat / Forest</h3><div class="figure-grid hybrid-pair"><figure data-image="./fig/parta/hybrid_1.png"><a class="result-link" href="./fig/parta/hybrid_1.png" target="_blank" rel="noopener" aria-label="Open full-size: Hybrid 2 · full-size view"><img src="./fig/parta/hybrid_1.png" alt="Hybrid 2 · full-size view" width="512" height="512" loading="lazy" decoding="async"></a><figcaption>Near view: forest</figcaption></figure><figure class="distant-view" data-image="./fig/parta/hybrid_1_distant.png"><a class="result-link" href="./fig/parta/hybrid_1_distant.png" target="_blank" rel="noopener" aria-label="Open full-size: Hybrid 2 · distant view"><img src="./fig/parta/hybrid_1_distant.png" alt="Hybrid 2 · distant view" width="64" height="64" loading="lazy" decoding="async"></a><figcaption>Distant view: cat</figcaption></figure></div></div>
+</div>
+      <p>Each Euler update combines the first prompt's broad structure with the second prompt's fine detail:</p>
+      <div class="formula">
+        \[
+        v_{\mathrm{hybrid}}=G_\sigma(v_a)+\left[v_b-G_\sigma(v_b)\right].
+        \]
+      </div>
+      <p>The Gaussian filter uses σ = 16 and a 265-pixel kernel. Up close, waterfall streams and forest trunks dominate; in the small distant views, those details recede and the skull and cat silhouettes become easier to read. The frequency split shapes the sampling trajectory itself.</p>
+    </section>
+
+    <div class="part-header" id="part-b">
+      <p class="section-kicker">Part B</p>
+      <h2>Flow Matching from Scratch</h2>
+      <p>Single-step denoising, time conditioning, and class-conditioned generation on MNIST.</p>
+      <nav class="content-nav" aria-label="Part B sections">
+        <a href="#b-1-1">1.1 UNet Architecture</a>
+        <a href="#b-1-2">1.2 Noising Process</a>
+        <a href="#b-1-2-1">1.2.1 Denoiser Training</a>
+        <a href="#b-1-2-2">1.2.2 OOD Testing</a>
+        <a href="#b-1-2-3">1.2.3 Pure Noise</a>
+        <a href="#b-2-1">2.1 Time Conditioning</a>
+        <a href="#b-2-2">2.2 Time-Conditioned Training</a>
+        <a href="#b-2-3">2.3 Time-Conditioned Sampling</a>
+        <a href="#b-2-4">2.4 Class Conditioning</a>
+        <a href="#b-2-5">2.5 Class-Conditioned Training</a>
+        <a href="#b-2-6">2.6 Class-Conditioned Sampling</a>
+      </nav>
+    </div>
+
+    <section class="panel writeup-section project-section" id="b-1-1">
+      <p class="section-kicker">Part B · 1.1</p>
+      <h2>Implementing the UNet</h2>
+      <p>The UNet encodes a 28 × 28 image with convolution and downsampling blocks, compresses its features through a bottleneck, and restores spatial resolution with upsampling blocks. Concatenated skip connections supply fine spatial information from matching encoder stages. The output has the same shape as the input, allowing pixelwise MSE training to recover clean digit intensities while combining local stroke detail with broader shape context.</p>
+    </section>
+
+    <section class="panel writeup-section project-section" id="b-1-2">
+      <p class="section-kicker">Part B · 1.2</p>
+      <h2>Visualizing the Noising Process</h2>
+      <p class="parameters">σ = 0.0, 0.2, 0.4, 0.5, 0.6, 0.8, 1.0</p>
+      <figure class="wide-figure" data-image="./fig/partb/noise_levels.png"><a class="result-link" href="./fig/partb/noise_levels.png" target="_blank" rel="noopener" aria-label="Open full-size: Same digit at seven noise levels"><img src="./fig/partb/noise_levels.png" alt="Same digit at seven noise levels" width="1680" height="240" loading="lazy" decoding="async"></a><figcaption>Noisy MNIST inputs, labeled by σ.</figcaption></figure>
+      <p>Here the corruption adds Gaussian noise to clean MNIST intensities in [0, 1]:</p>
+      <div class="formula">
+        \[
+        z=x+\sigma\epsilon, \qquad \epsilon\sim\mathcal{N}(0,I).
+        \]
+      </div>
+      <p>Increasing σ progressively obscures the digit, although its coarse stroke remains visible through moderate noise. Unlike Part A's interpolation, this process leaves the image coefficient at 1; σ controls only the added noise, and σ = 0 returns the original image.</p>
+    </section>
+
+    <section class="panel writeup-section project-section" id="b-1-2-1">
+      <p class="section-kicker">Part B · 1.2.1</p>
+      <h2>Training a Single-Step Denoiser</h2>
+      <p class="parameters">D = 128 · batch size = 256 · Adam lr = 10⁻⁴ · σ = 0.5 · 5 epochs</p>
+      <div class="figure-stack">
+<figure class="wide-figure" data-image="./fig/partb/denoise_loss.png"><a class="result-link" href="./fig/partb/denoise_loss.png" target="_blank" rel="noopener" aria-label="Open full-size: Training loss curve"><img src="./fig/partb/denoise_loss.png" alt="Training loss curve" width="960" height="360" loading="lazy" decoding="async"></a><figcaption>Loss throughout training.</figcaption></figure>
+      <figure class="wide-figure" data-image="./fig/partb/denoise_epoch1.png"><a class="result-link" href="./fig/partb/denoise_epoch1.png" target="_blank" rel="noopener" aria-label="Open full-size: Epoch 1 · original / noisy / denoised"><img src="./fig/partb/denoise_epoch1.png" alt="Epoch 1 · original / noisy / denoised" width="1440" height="413" loading="lazy" decoding="async"></a><figcaption>Held-out test examples after epoch 1.</figcaption></figure>
+      <figure class="wide-figure" data-image="./fig/partb/denoise_epoch5.png"><a class="result-link" href="./fig/partb/denoise_epoch5.png" target="_blank" rel="noopener" aria-label="Open full-size: Epoch 5 · original / noisy / denoised"><img src="./fig/partb/denoise_epoch5.png" alt="Epoch 5 · original / noisy / denoised" width="1440" height="413" loading="lazy" decoding="async"></a><figcaption>Held-out test examples after epoch 5.</figcaption></figure>
+      </div>
+
+      <p>I train on MNIST training images with freshly sampled σ = 0.5 noise and minimize MSE between the UNet output and the clean target. Mean training loss falls from 0.0204 after epoch 1 to 0.00819 after epoch 5. Held-out examples recover clearer strokes and cleaner backgrounds by epoch 5.</p>
+    </section>
+
+    <section class="panel writeup-section project-section" id="b-1-2-2">
+      <p class="section-kicker">Part B · 1.2.2</p>
+      <h2>Out-of-Distribution Testing</h2>
+      <p class="parameters">Same test image · σ = 0.0, 0.2, 0.4, 0.5, 0.6, 0.8, 1.0</p>
+      <figure class="wide-figure" data-image="./fig/partb/denoise_ood.png"><a class="result-link" href="./fig/partb/denoise_ood.png" target="_blank" rel="noopener" aria-label="Open full-size: Noisy inputs and denoised outputs at seven noise levels"><img src="./fig/partb/denoise_ood.png" alt="Noisy inputs and denoised outputs at seven noise levels" width="1680" height="480" loading="lazy" decoding="async"></a><figcaption>Evaluation of the σ = 0.5 denoiser across noise levels.</figcaption></figure>
+      <p>The denoiser is trained only at σ = 0.5 and receives no explicit noise-level input. On this fixed test digit, it preserves a recognizable 7 across most of the sweep, including several unseen noise levels, but the σ = 1.0 result has less stable, noisier strokes. A learned digit prior supports some generalization, while stronger corruption makes the clean image less certain and moves the input farther from the training distribution.</p>
+    </section>
+
+    <section class="panel writeup-section project-section" id="b-1-2-3">
+      <p class="section-kicker">Part B · 1.2.3</p>
+      <h2>Denoising Pure Noise</h2>
+      <p class="parameters">Fresh UNet · independent Gaussian noise inputs · 5 epochs</p>
+      <div class="figure-stack">
+<figure class="wide-figure" data-image="./fig/partb/pure_noise_loss.png"><a class="result-link" href="./fig/partb/pure_noise_loss.png" target="_blank" rel="noopener" aria-label="Open full-size: Pure-noise training loss"><img src="./fig/partb/pure_noise_loss.png" alt="Pure-noise training loss" width="960" height="360" loading="lazy" decoding="async"></a><figcaption>Loss throughout training.</figcaption></figure>
+      <figure class="wide-figure" data-image="./fig/partb/pure_noise_epoch1.png"><a class="result-link" href="./fig/partb/pure_noise_epoch1.png" target="_blank" rel="noopener" aria-label="Open full-size: Pure-noise outputs · epoch 1"><img src="./fig/partb/pure_noise_epoch1.png" alt="Pure-noise outputs · epoch 1" width="1440" height="240" loading="lazy" decoding="async"></a><figcaption>Generated outputs after epoch 1.</figcaption></figure>
+      <figure class="wide-figure" data-image="./fig/partb/pure_noise_epoch5.png"><a class="result-link" href="./fig/partb/pure_noise_epoch5.png" target="_blank" rel="noopener" aria-label="Open full-size: Pure-noise outputs · epoch 5"><img src="./fig/partb/pure_noise_epoch5.png" alt="Pure-noise outputs · epoch 5" width="1440" height="240" loading="lazy" decoding="async"></a><figcaption>Generated outputs after epoch 5.</figcaption></figure>
+      </div>
+
+      <p>Different pure-noise inputs produce nearly identical blurry, overlapping digit shapes rather than distinct digits. Under MSE, the optimal prediction is the conditional mean; because the input noise and target digit are independent, this becomes the dataset mean:</p>
+      <div class="formula">
+        \[
+        f^*(\epsilon)=\mathbb{E}[x\mid\epsilon]=\mathbb{E}[x].
+        \]
+      </div>
+      <p>The output therefore resembles a superposition of MNIST digits. </p>
+    </section>
+
+    <section class="panel writeup-section project-section" id="b-2-1">
+      <p class="section-kicker">Part B · 2.1</p>
+      <h2>Adding Time Conditioning to UNet</h2>
+      <p>Two fully connected blocks embed normalized time t and multiply features at the bottleneck output and first upsampling stage. Training uses an interpolated input and targets its path velocity:</p>
+      <div class="formula">
+        \[
+        x_t=(1-t)x_0+tx_1, \qquad v_{\mathrm{target}}=x_1-x_0.
+        \]
+      </div>
+      <p>The target is velocity rather than the clean image. Time tells the network which part of the noise-to-data path it is modeling; sampling then integrates its changing velocity from t = 0 to 1 with Euler updates.</p>
+    </section>
+
+    <section class="panel writeup-section project-section" id="b-2-2">
+      <p class="section-kicker">Part B · 2.2</p>
+      <h2>Training the Time-Conditioned UNet</h2>
+      <p class="parameters">D = 64 · batch size = 64 · Adam lr = 10⁻² · exponential decay · 10 epochs</p>
+      <figure class="wide-figure loss-figure" data-image="./fig/partb/time_loss.png"><a class="result-link" href="./fig/partb/time_loss.png" target="_blank" rel="noopener" aria-label="Open full-size: Time-conditioned training loss"><img src="./fig/partb/time_loss.png" alt="Time-conditioned training loss" width="960" height="360" loading="lazy" decoding="async"></a><figcaption>Loss throughout the ten training epochs.</figcaption></figure>
+      <p>Each training batch receives fresh Gaussian noise and uniformly sampled times, so the UNet learns velocities throughout the interpolation path without running a sampling loop during training. The learning rate decays once per epoch from 0.01 toward 0.001. Mean velocity MSE falls from 0.178 to 0.0932 over ten epochs, indicating a better fit to the training targets; the next section evaluates whether that fit produces recognizable samples.</p>
+    </section>
+
+    <section class="panel writeup-section project-section" id="b-2-3">
+      <p class="section-kicker">Part B · 2.3</p>
+      <h2>Sampling from the Time-Conditioned UNet</h2>
+      <div class="figure-stack">
+<figure class="wide-figure" data-image="./fig/partb/time_epoch1.png"><a class="result-link" href="./fig/partb/time_epoch1.png" target="_blank" rel="noopener" aria-label="Open full-size: Time-conditioned samples · epoch 1"><img src="./fig/partb/time_epoch1.png" alt="Time-conditioned samples · epoch 1" width="1440" height="240" loading="lazy" decoding="async"></a><figcaption>Epoch 1</figcaption></figure>
+      <figure class="wide-figure" data-image="./fig/partb/time_epoch5.png"><a class="result-link" href="./fig/partb/time_epoch5.png" target="_blank" rel="noopener" aria-label="Open full-size: Time-conditioned samples · epoch 5"><img src="./fig/partb/time_epoch5.png" alt="Time-conditioned samples · epoch 5" width="1440" height="240" loading="lazy" decoding="async"></a><figcaption>Epoch 5</figcaption></figure>
+      <figure class="wide-figure" data-image="./fig/partb/time_epoch10.png"><a class="result-link" href="./fig/partb/time_epoch10.png" target="_blank" rel="noopener" aria-label="Open full-size: Time-conditioned samples · epoch 10"><img src="./fig/partb/time_epoch10.png" alt="Time-conditioned samples · epoch 10" width="1440" height="240" loading="lazy" decoding="async"></a><figcaption>Epoch 10</figcaption></figure>
+      </div>
+
+      <p>From the same initial noises, 50 Euler steps produce increasingly coherent strokes across epochs 1, 5, and 10. The final row contains recognizable digit-like forms, but also open loops and distorted shapes with ambiguous identities. Iterative velocity prediction avoids the single averaged output of 1.2.3, yet these samples show that a lower training loss alone does not ensure consistently legible digits. Time conditioning also provides no control over which digit is generated.</p>
+    </section>
+
+    <section class="panel writeup-section project-section" id="b-2-4">
+      <p class="section-kicker">Part B · 2.4</p>
+      <h2>Adding Class Conditioning to UNet</h2>
+      <p class="parameters">One-hot digit labels · class dropout probability = 0.1</p>
+      <p>I encode labels as ten-dimensional one-hot vectors and add two class-embedding blocks. At the two conditioned stages, features are modulated as:</p>
+      <div class="formula">
+        \[
+        \begin{aligned}
+        h'_{\mathrm{unflatten}}&=c_1\odot h_{\mathrm{unflatten}}+t_1,\\
+        h'_{\mathrm{up1}}&=c_2\odot h_{\mathrm{up1}}+t_2.
+        \end{aligned}
+        \]
+      </div>
+      <p>The products act channelwise. During training, 10% of class vectors are zeroed so the same network also learns unconditional velocities. This all-zero condition differs from the one-hot label for digit 0 and enables conditional/unconditional guidance at sampling time.</p>
+    </section>
+
+    <section class="panel writeup-section project-section" id="b-2-5">
+      <p class="section-kicker">Part B · 2.5</p>
+      <h2>Training the Class-Conditioned UNet</h2>
+      <p class="parameters">D = 64 · batch size = 64 · 10 epochs per experiment</p>
+      <div class="figure-stack">
+<figure class="wide-figure" data-image="./fig/partb/class_loss.png"><a class="result-link" href="./fig/partb/class_loss.png" target="_blank" rel="noopener" aria-label="Open full-size: Class-conditioned loss · exponential scheduler"><img src="./fig/partb/class_loss.png" alt="Class-conditioned loss · exponential scheduler" width="960" height="360" loading="lazy" decoding="async"></a><figcaption>Adam learning rate: 10⁻² → 10⁻³.</figcaption></figure>
+      <figure class="wide-figure" data-image="./fig/partb/no_scheduler_loss.png"><a class="result-link" href="./fig/partb/no_scheduler_loss.png" target="_blank" rel="noopener" aria-label="Open full-size: Class-conditioned loss · no scheduler"><img src="./fig/partb/no_scheduler_loss.png" alt="Class-conditioned loss · no scheduler" width="960" height="360" loading="lazy" decoding="async"></a><figcaption>Independent comparison with constant Adam learning rate 10⁻³.</figcaption></figure>
+      </div>
+
+      <p>The objective remains velocity MSE, now using both time and a digit label, with random class dropout to train the unconditional branch as well. Both ten-epoch runs show decreasing loss. Final mean losses are 0.08477 with exponential decay and 0.08501 with a constant learning rate of 0.001, indicating similar training fits; generated-image quality must still be compared directly rather than inferred from these close losses alone.</p>
+    </section>
+
+    <section class="panel writeup-section project-section" id="b-2-6">
+      <p class="section-kicker">Part B · 2.6</p>
+      <h2>Sampling from the Class-Conditioned UNet</h2>
+      <p class="parameters">40 images per grid · 4 of each digit · 300 Euler steps · CFG γ = 5</p>
+      <h3>With the Exponential Scheduler</h3>
+      <div class="figure-stack">
+<figure class="wide-figure" data-image="./fig/partb/class_epoch1.png"><a class="result-link" href="./fig/partb/class_epoch1.png" target="_blank" rel="noopener" aria-label="Open full-size: Class-conditioned samples · epoch 1"><img src="./fig/partb/class_epoch1.png" alt="Class-conditioned samples · epoch 1" width="1440" height="552" loading="lazy" decoding="async"></a><figcaption>Epoch 1 · four rows of digits 0–9</figcaption></figure>
+      <figure class="wide-figure" data-image="./fig/partb/class_epoch5.png"><a class="result-link" href="./fig/partb/class_epoch5.png" target="_blank" rel="noopener" aria-label="Open full-size: Class-conditioned samples · epoch 5"><img src="./fig/partb/class_epoch5.png" alt="Class-conditioned samples · epoch 5" width="1440" height="552" loading="lazy" decoding="async"></a><figcaption>Epoch 5 · four rows of digits 0–9</figcaption></figure>
+      <figure class="wide-figure" data-image="./fig/partb/class_epoch10.png"><a class="result-link" href="./fig/partb/class_epoch10.png" target="_blank" rel="noopener" aria-label="Open full-size: Class-conditioned samples · epoch 10"><img src="./fig/partb/class_epoch10.png" alt="Class-conditioned samples · epoch 10" width="1440" height="552" loading="lazy" decoding="async"></a><figcaption>Epoch 10 · four rows of digits 0–9</figcaption></figure>
+      </div>
+
+      <h3>Without the Scheduler</h3>
+      <div class="figure-stack">
+<figure class="wide-figure" data-image="./fig/partb/no_scheduler_epoch1.png"><a class="result-link" href="./fig/partb/no_scheduler_epoch1.png" target="_blank" rel="noopener" aria-label="Open full-size: No-scheduler samples · epoch 1"><img src="./fig/partb/no_scheduler_epoch1.png" alt="No-scheduler samples · epoch 1" width="1440" height="552" loading="lazy" decoding="async"></a><figcaption>Epoch 1 · four rows of digits 0–9</figcaption></figure>
+      <figure class="wide-figure" data-image="./fig/partb/no_scheduler_epoch5.png"><a class="result-link" href="./fig/partb/no_scheduler_epoch5.png" target="_blank" rel="noopener" aria-label="Open full-size: No-scheduler samples · epoch 5"><img src="./fig/partb/no_scheduler_epoch5.png" alt="No-scheduler samples · epoch 5" width="1440" height="552" loading="lazy" decoding="async"></a><figcaption>Epoch 5 · four rows of digits 0–9</figcaption></figure>
+      <figure class="wide-figure" data-image="./fig/partb/no_scheduler_epoch10.png"><a class="result-link" href="./fig/partb/no_scheduler_epoch10.png" target="_blank" rel="noopener" aria-label="Open full-size: No-scheduler samples · epoch 10"><img src="./fig/partb/no_scheduler_epoch10.png" alt="No-scheduler samples · epoch 10" width="1440" height="552" loading="lazy" decoding="async"></a><figcaption>Epoch 10 · four rows of digits 0–9</figcaption></figure>
+      </div>
+
+      <p>Sampling combines conditional and unconditional velocities using:</p>
+      <div class="formula">
+        \[
+        v_{\mathrm{CFG}}=v_u+\gamma(v_c-v_u), \qquad \gamma=5.
+        \]
+      </div>
+      <p>Taking 300 Euler steps produces four examples of each requested digit. By epochs 5 and 10, strokes and class identities are substantially clearer than at epoch 1, with variation in handwriting within each column. Class information and guidance steer generation toward the requested category.</p>
+      <p>For the no-scheduler comparison, I replace the decaying 0.01 learning rate with a smaller constant 0.001 to keep training updates controlled throughout. Both models train independently for ten epochs from the same initialization, and sampling uses matching initial noises. Their epoch-10 grids have similar legibility and class control, with differences in stroke shape and thickness; this comparison supports retaining visual quality with the chosen constant rate.</p>
+    </section>
+
+    <footer class="page-footer">
+      <div class="source-links">
+        <a href="https://cal-cs180.github.io/fa26/hw/proj3-flow/parta.html">Part A assignment</a>
+        <a href="https://cal-cs180.github.io/fa26/hw/proj3-flow/partb.html">Part B assignment</a>
+        <a class="back-to-top" href="#top">Back to top ↑</a>
+      </div>
+    </footer>
+  </main>
+</body>
+</html>
