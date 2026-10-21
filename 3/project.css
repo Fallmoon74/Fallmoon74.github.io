@@ -1,3 +1,6 @@
+.site-url { margin: 10px 0 0; }
+.site-url a { color: #1d4ed8; text-decoration: underline; }
+
 .wide-figure { margin: 18px 0 28px; }
 .figure-grid img { max-height: 360px; object-fit: contain; background: #fafafa; }
 .wide-figure img { max-height: none; }
