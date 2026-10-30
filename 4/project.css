@@ -1,0 +1,24 @@
+.site-url { margin: 10px 0 0; }
+.site-url a, .source-links a { color: #1d4ed8; text-decoration: underline; }
+.part-header { margin: 32px 0 20px; }
+.part-header h2 { margin: 0 0 8px; }
+.project-section, .part-header { scroll-margin-top: 20px; }
+.panel, .figure-grid > *, figure { min-width: 0; }
+.wide-figure { margin: 18px 0 28px; }
+.image-slot { min-height: 190px; }
+.mosaic-slot { min-height: 240px; }
+.placeholder-label { color: #334155; font-weight: 600; }
+.pending-note { color: #64748b; }
+.formula mjx-container[display="true"] { margin: .35em 0 !important; }
+.source-links { display: flex; flex-wrap: wrap; gap: 16px; }
+.page-footer { margin-top: 20px; padding-top: 20px; border-top: 1px solid #e5e7eb; }
+
+@media print {
+  @page { size: A4 portrait; margin: 14mm; }
+  body { background: #fff; }
+  .site-header, .page { max-width: none; padding: 12px 0; }
+  .content-nav, .back-to-top { display: none; }
+  figure, .formula { break-inside: avoid; }
+  h2, h3, .section-kicker { break-after: avoid; }
+  .image-slot, .mosaic-slot { min-height: 100px; }
+}

@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="CS180 Project 4: homography estimation, inverse warping, rectification, and photo mosaics. Methods are implemented; photographic results are pending.">
+  <title>Project 4 | Fallmoon74 CS180 Portfolio</title>
+  <link rel="stylesheet" href="../style.css">
+  <link rel="stylesheet" href="./project.css">
+  <script>
+    window.MathJax = {
+      tex: {
+        inlineMath: [['\\(', '\\)']],
+        displayMath: [['\\[', '\\]']]
+      }
+    };
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</head>
+<body>
+  <header class="site-header" id="top">
+    <p class="eyebrow">CS180 Project 4 · Yanzhen Ning</p>
+    <h1>Image Warping and Mosaicing</h1>
+    <p class="lede">Aligning overlapping photographs through projective geometry</p>
+    <p class="site-url"><a href="https://fallmoon74.github.io/4/">https://fallmoon74.github.io/4/</a></p>
+  </header>
+
+  <main class="page">
+    <nav class="content-nav" aria-label="Project navigation">
+      <a href="../index.html">Home</a>
+      <a href="#overview">Overview</a>
+      <a href="#part-a">Part A</a>
+      <a href="#part-b">Part B</a>
+    </nav>
+
+    <section class="panel" id="overview">
+      <p class="section-kicker">Project overview</p>
+      <h2>From Overlapping Views to One Mosaic</h2>
+      <p>Two photographs can show different parts of the same scene while sharing an overlapping region. Matching the same features in that region lets me estimate a projective transformation, move both views into a common coordinate system, and combine them into a larger image.</p>
+      <div class="method-flow" aria-label="Implementation pipeline">
+        <span>Capture views</span>
+        <span>Select matches</span>
+        <span>Estimate H</span>
+        <span>Inverse warp</span>
+        <span>Blend</span>
+      </div>
+      <p>The implementation estimates homographies with NumPy least squares and implements both nearest-neighbor and bilinear sampling directly. Matplotlib <code>ginput</code> provides the manual point-selection interface. No high-level homography or perspective-warping functions are used.</p>
+      <p class="pending-note"><strong>Work in progress.</strong> The methods below describe the current implementation. Photographs, numerical homographies, timings, and visual observations will be added after the experiments. Empty slots are reserved for these results.</p>
+    </section>
+
+    <div class="part-header" id="part-a">
+      <p class="section-kicker">Part A</p>
+      <h2>Image Warping and Mosaicing</h2>
+      <nav class="content-nav" aria-label="Part A sections">
+        <a href="#a-1">A.1 Capture</a>
+        <a href="#a-2">A.2 Homographies</a>
+        <a href="#a-3">A.3 Warping &amp; Rectification</a>
+        <a href="#a-4">A.4 Mosaics</a>
+        <a href="#a-5">A.5 Cylindrical Projection</a>
+        <a href="#discussion">Discussion</a>
+      </nav>
+    </div>
+
+    <section class="panel writeup-section project-section" id="a-1">
+      <p class="section-kicker">Part A · A.1</p>
+      <h2>Shoot the Pictures</h2>
+      <p>The planned capture procedure keeps the camera's center of projection fixed and changes only its orientation. Adjacent views should overlap by approximately 40–70%, with clear, stationary features distributed throughout the overlap. Most photographs will be captured personally. A.1 requires at least two sets; I reserve three sets here because A.4 requires three mosaics.</p>
+      <h3>Why Camera Rotation Matters</h3>
+      <p>With a fixed camera center, a scene point is observed along the same spatial ray before and after rotation. Its depth cancels, so a single homography can relate the two images. If the intrinsic calibration is unchanged and R maps camera-1 coordinates into camera-2 coordinates, the ideal relationship is:</p>
+      <div class="formula">
+        \[
+        \mathbf p_2 \sim H\mathbf p_1,
+        \qquad H=KRK^{-1}.
+        \]
+      </div>
+      <p>Here, K is the intrinsic camera matrix and \(\sim\) means equality up to a nonzero scale. Moving the camera sideways introduces depth-dependent parallax, especially for nearby objects, which one homography generally cannot remove. Static, distant scenes and minimal camera translation make the model more appropriate.</p>
+      <p>I will avoid strong lens distortion and capture each set close together in time. Keeping exposure and focal length consistent also helps reduce differences that geometric alignment alone cannot correct.</p>
+      <div class="figure-grid three-up">
+        <figure>
+          <div class="photo-placeholder image-slot"><span class="placeholder-label">Capture set 01</span><span>Two or more overlapping source views</span></div>
+          <figcaption>Scene, camera settings, and capture notes pending.</figcaption>
+        </figure>
+        <figure>
+          <div class="photo-placeholder image-slot"><span class="placeholder-label">Capture set 02</span><span>Two or more overlapping source views</span></div>
+          <figcaption>Scene, camera settings, and capture notes pending.</figcaption>
+        </figure>
+        <figure>
+          <div class="photo-placeholder image-slot"><span class="placeholder-label">Capture set 03</span><span>Source views for the third mosaic</span></div>
+          <figcaption>Scene, camera settings, and capture notes pending.</figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <section class="panel writeup-section project-section" id="a-2">
+      <p class="section-kicker">Part A · A.2</p>
+      <h2>Recover Homographies</h2>
+      <p>I manually select the same features in the source and reference images, preserving their order. The default is 12 pairs, rather than the minimum four, so the system is overdetermined. Points should cover the overlap instead of clustering in one small area or lying on one line.</p>
+      <h3>Projective Mapping</h3>
+      <p>Points use (x, y) coordinates, while image arrays are indexed as [y, x]. A source-to-reference homography has eight independent parameters after fixing its bottom-right entry to one:</p>
+      <div class="formula">
+        \[
+        \lambda\begin{bmatrix}u\\v\\1\end{bmatrix}
+        =\begin{bmatrix}
+        h_{11}&amp;h_{12}&amp;h_{13}\\
+        h_{21}&amp;h_{22}&amp;h_{23}\\
+        h_{31}&amp;h_{32}&amp;1
+        \end{bmatrix}
+        \begin{bmatrix}x\\y\\1\end{bmatrix}.
+        \]
+        \[
+        \begin{aligned}
+        u&amp;=\frac{h_{11}x+h_{12}y+h_{13}}{h_{31}x+h_{32}y+1},\\
+        v&amp;=\frac{h_{21}x+h_{22}y+h_{23}}{h_{31}x+h_{32}y+1}.
+        \end{aligned}
+        \]
+      </div>
+      <p>Multiplying out the denominators gives two linear constraints per correspondence. Stacking N pairs produces a \(2N\times8\) system:</p>
+      <div class="formula">
+        \[
+        \underbrace{\begin{bmatrix}
+        x_i&amp;y_i&amp;1&amp;0&amp;0&amp;0&amp;-u_i x_i&amp;-u_i y_i\\
+        0&amp;0&amp;0&amp;x_i&amp;y_i&amp;1&amp;-v_i x_i&amp;-v_i y_i
+        \end{bmatrix}}_{A_i}
+        \underbrace{\begin{bmatrix}
+        h_{11}\\h_{12}\\h_{13}\\h_{21}\\h_{22}\\h_{23}\\h_{31}\\h_{32}
+        \end{bmatrix}}_{\mathbf h}
+        =\underbrace{\begin{bmatrix}u_i\\v_i\end{bmatrix}}_{\mathbf b_i}.
+        \]
+      </div>
+      <h3>Normalization and Least Squares</h3>
+      <p>Large pixel coordinates can make the system poorly conditioned. Before constructing the system used by the solver, I normalize each point set independently: translate its centroid to the origin and scale its mean distance from the origin to \(\sqrt{2}\).</p>
+      <div class="formula">
+        \[
+        \mathbf c=\frac1N\sum_i\mathbf p_i,
+        \quad d=\frac1N\sum_i\lVert\mathbf p_i-\mathbf c\rVert_2,
+        \quad s=\frac{\sqrt2}{d},
+        \quad T=\begin{bmatrix}s&amp;0&amp;-sc_x\\0&amp;s&amp;-sc_y\\0&amp;0&amp;1\end{bmatrix}.
+        \]
+        \[
+        \widetilde{\mathbf h}^{\,*}
+        =\underset{\widetilde{\mathbf h}}{\operatorname{arg\,min}}
+        \lVert\widetilde A\widetilde{\mathbf h}-\widetilde{\mathbf b}\rVert_2^2,
+        \qquad H=T_{\mathrm{ref}}^{-1}\widetilde H T_{\mathrm{src}}.
+        \]
+      </div>
+      <p>The implementation uses <code>numpy.linalg.lstsq</code> on the normalized system, restores the original coordinate systems, and rescales H so that \(h_{33}=1\). This minimizes an algebraic least-squares objective; it is not a nonlinear minimization of geometric reprojection error.</p>
+      <div class="figure-grid">
+        <figure>
+          <div class="photo-placeholder image-slot"><span class="placeholder-label">Numbered correspondences</span><span>Matching features in source and reference</span></div>
+          <figcaption>Correspondence visualization pending actual photographs and manual selection.</figcaption>
+        </figure>
+        <figure>
+          <div class="photo-placeholder image-slot"><span class="placeholder-label">Recovered homography</span><span>Numerical 3 × 3 matrix and selected point pairs</span></div>
+          <figcaption>The measured H for a representative pair will be inserted here.</figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <section class="panel writeup-section project-section" id="a-3">
+      <p class="section-kicker">Part A · A.3</p>
+      <h2>Warp the Images and Rectify Planes</h2>
+      <h3>A Common Canvas and Inverse Mapping</h3>
+      <p>I treat integer coordinates as pixel centers. An image of width W and height H therefore has corner centers at (0, 0), (W − 1, 0), (W − 1, H − 1), and (0, H − 1). Projecting the corners gives the bounds of a finite planar warp. I round the minimum coordinates down and the maximum coordinates up, including both endpoint pixels.</p>
+      <div class="formula">
+        \[
+        W_{\mathrm{out}}=x_{\max}-x_{\min}+1,
+        \qquad H_{\mathrm{out}}=y_{\max}-y_{\min}+1.
+        \]
+        \[
+        \mathbf q_{\mathrm{ref}}=
+        \begin{bmatrix}j+x_{\min}\\i+y_{\min}\\1\end{bmatrix},
+        \qquad
+        \begin{bmatrix}X_s\\Y_s\\Z_s\end{bmatrix}
+        =H^{-1}\mathbf q_{\mathrm{ref}},
+        \qquad (x_s,y_s)=\left(\frac{X_s}{Z_s},\frac{Y_s}{Z_s}\right).
+        \]
+      </div>
+      <p>For each output pixel [i, j], I find its continuous source coordinate and sample there. This inverse procedure avoids the holes produced by scattering source pixels onto a destination grid. The canvas origin may be negative; its offset must be added before applying the inverse matrix.</p>
+      <p>A separate geometric mask records whether the source coordinate is finite and lies inside the image. The mask does not depend on color, so a genuinely black source pixel remains valid. Uncovered output pixels are saved with zero alpha.</p>
+      <h3>Two Interpolation Methods from Scratch</h3>
+      <p>Nearest-neighbor interpolation rounds the source coordinate to the closest pixel center:</p>
+      <div class="formula">
+        \[
+        I_{\mathrm{NN}}(x,y)=
+        I\!\left(\left\lfloor x+\tfrac12\right\rfloor,
+        \left\lfloor y+\tfrac12\right\rfloor\right).
+        \]
+      </div>
+      <p>Bilinear interpolation uses the four neighboring pixels. For \(x_0=\lfloor x\rfloor\), \(y_0=\lfloor y\rfloor\), \(a=x-x_0\), and \(b=y-y_0\):</p>
+      <div class="formula">
+        \[
+        \begin{aligned}
+        I_{\mathrm{bil}}(x,y)={}&amp;(1-a)(1-b)I(x_0,y_0)
+        +a(1-b)I(x_0+1,y_0)\\
+        &amp;+(1-a)bI(x_0,y_0+1)+abI(x_0+1,y_0+1).
+        \end{aligned}
+        \]
+      </div>
+      <p>The implementation clamps the upper neighbor at the final row or column and applies the same weights independently to each color channel. Nearest neighbor preserves discrete samples but can produce jagged edges. Bilinear usually gives smoother transitions, at the cost of more arithmetic and some softening. Actual timings and visual differences remain to be measured; bilinear interpolation alone is not a complete antialiasing solution for strong downscaling.</p>
+      <h3>Rectification</h3>
+      <p>A known rectangle supplies a simple geometric test. I select its corners in perimeter order—top left, top right, bottom right, bottom left—and map them to a front-facing rectangle. The output width-to-height ratio should match the object's known proportions. A square target is appropriate for a square tile, but not for every rectangular object.</p>
+      <div class="formula">
+        \[
+        \mathbf p_1,\mathbf p_2,\mathbf p_3,\mathbf p_4
+        \longrightarrow
+        (0,0),\ (W_r-1,0),\ (W_r-1,H_r-1),\ (0,H_r-1).
+        \]
+      </div>
+      <p>Here four corner pairs define the desired plane-to-plane mapping. I render both methods with the same H and output dimensions, time only the warp computation, and save the two images separately for comparison.</p>
+      <h3>Rectification Example 01</h3>
+      <div class="figure-grid three-up">
+        <figure><div class="photo-placeholder image-slot"><span class="placeholder-label">Original 01</span><span>Oblique view with selected corners</span></div><figcaption>Object and known proportions pending.</figcaption></figure>
+        <figure><div class="photo-placeholder image-slot"><span class="placeholder-label">Nearest neighbor 01</span><span>Rectified output</span></div><figcaption>Result pending.</figcaption></figure>
+        <figure><div class="photo-placeholder image-slot"><span class="placeholder-label">Bilinear 01</span><span>Same homography and dimensions</span></div><figcaption>Result pending.</figcaption></figure>
+      </div>
+      <h3>Rectification Example 02</h3>
+      <div class="figure-grid three-up">
+        <figure><div class="photo-placeholder image-slot"><span class="placeholder-label">Original 02</span><span>Oblique view with selected corners</span></div><figcaption>Object and known proportions pending.</figcaption></figure>
+        <figure><div class="photo-placeholder image-slot"><span class="placeholder-label">Nearest neighbor 02</span><span>Rectified output</span></div><figcaption>Result pending.</figcaption></figure>
+        <figure><div class="photo-placeholder image-slot"><span class="placeholder-label">Bilinear 02</span><span>Same homography and dimensions</span></div><figcaption>Result pending.</figcaption></figure>
+      </div>
+      <div class="table-wrap">
+        <table class="results-table">
+          <caption>Interpolation measurements — to be filled after running the experiments</caption>
+          <thead><tr><th scope="col">Example</th><th scope="col">Output dimensions</th><th scope="col">Nearest time</th><th scope="col">Bilinear time</th></tr></thead>
+          <tbody>
+            <tr><th scope="row">01</th><td>Pending</td><td>Pending</td><td>Pending</td></tr>
+            <tr><th scope="row">02</th><td>Pending</td><td>Pending</td><td>Pending</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="pending-note">The measured speed comparison and observations about edges, text, and fine detail will be added beside these results.</p>
+    </section>
+
+    <section class="panel writeup-section project-section" id="a-4">
+      <p class="section-kicker">Part A · A.4</p>
+      <h2>Blend the Images into Mosaics</h2>
+      <p>I choose a reference image and express every other view in that coordinate system. A directly matched pair supplies its homography; for a sequence of matches, the matrices are composed along a path to the reference:</p>
+      <div class="formula">
+        \[
+        H_{i\rightarrow r}=H_{j\rightarrow r}H_{i\rightarrow j}.
+        \]
+      </div>
+      <p>The implementation stores both directions of each pair and traverses the connected group from the reference image. The reference itself uses the identity transform. All transformed image corners determine one shared canvas, and every image is inverse-warped into it using bilinear sampling.</p>
+      <h3>Feathering Rather Than Overwriting</h3>
+      <p>Overwriting one view with another creates an abrupt boundary. I assign a larger weight to pixels farther from an image's edges, then normalize the combined contributions. For source image i with dimensions \(W_i\times H_i\), the implemented weight is:</p>
+      <div class="formula">
+        \[
+        d_i(x,y)=\min\{x+1,\ W_i-x,\ y+1,\ H_i-y\},
+        \qquad w_i(x,y)=\frac{d_i(x,y)}{\max_{x,y}d_i(x,y)}.
+        \]
+      </div>
+      <p>The +1 convention keeps weights positive on valid boundary pixels. RGB and the weight map are packed together and warped with the same coordinates, so the weights remain aligned with their colors. Let \(\bar I_i\) and \(\bar w_i\) be the warped image and weight, and \(M_i\) its validity mask:</p>
+      <div class="formula">
+        \[
+        I_{\mathrm{mosaic}}(p)=
+        \frac{\sum_i M_i(p)\bar w_i(p)\bar I_i(p)}
+        {\sum_i M_i(p)\bar w_i(p)},
+        \qquad \text{where the denominator is positive.}
+        \]
+      </div>
+      <p>A pixel covered by only one view keeps that view's color. Overlapping views contribute a weighted average, while uncovered pixels remain transparent. Feathering reduces abrupt seams but cannot repair incorrect geometry, parallax, or moving objects; averaging misaligned details can still produce ghosting.</p>
+      <h3>Mosaic 01</h3>
+      <figure class="wide-figure"><div class="photo-placeholder image-slot"><span class="placeholder-label">Mosaic 01 · source photographs</span><span>All views used in this mosaic</span></div><figcaption>Scene and reference-image choice pending.</figcaption></figure>
+      <figure class="wide-figure"><div class="photo-placeholder image-slot mosaic-slot"><span class="placeholder-label">Mosaic 01 · blended result</span><span>Common canvas with feathered overlap</span></div><figcaption>Alignment and seam observations pending.</figcaption></figure>
+      <h3>Mosaic 02</h3>
+      <figure class="wide-figure"><div class="photo-placeholder image-slot"><span class="placeholder-label">Mosaic 02 · source photographs</span><span>All views used in this mosaic</span></div><figcaption>Scene and reference-image choice pending.</figcaption></figure>
+      <figure class="wide-figure"><div class="photo-placeholder image-slot mosaic-slot"><span class="placeholder-label">Mosaic 02 · blended result</span><span>Common canvas with feathered overlap</span></div><figcaption>Alignment and seam observations pending.</figcaption></figure>
+      <h3>Mosaic 03</h3>
+      <figure class="wide-figure"><div class="photo-placeholder image-slot"><span class="placeholder-label">Mosaic 03 · source photographs</span><span>All views used in this mosaic</span></div><figcaption>Scene and reference-image choice pending.</figcaption></figure>
+      <figure class="wide-figure"><div class="photo-placeholder image-slot mosaic-slot"><span class="placeholder-label">Mosaic 03 · blended result</span><span>Common canvas with feathered overlap</span></div><figcaption>Alignment and seam observations pending.</figcaption></figure>
+    </section>
+
+    <section class="panel writeup-section project-section" id="a-5">
+      <p class="section-kicker">Part A · A.5 · Optional extension for CS180</p>
+      <h2>Cylindrical Projection</h2>
+      <p>A planar mosaic stretches views toward the sides. The optional implementation instead represents the same aligned views on a cylinder. Relative to the reference image center \((c_x,c_y)\), write \(X=x-c_x\), \(Y=y-c_y\), and choose a focal length f in processed-image pixels:</p>
+      <div class="formula">
+        \[
+        u=c_x+f\arctan(X/f),
+        \qquad
+        v=c_y+\frac{fY}{\sqrt{f^2+X^2}}.
+        \]
+      </div>
+      <p>To render the output, I invert this mapping before applying each source image's inverse homography:</p>
+      <div class="formula">
+        \[
+        \theta=\frac{u-c_x}{f},
+        \qquad x=c_x+f\tan\theta,
+        \qquad y=c_y+\frac{v-c_y}{\cos\theta},
+        \qquad |\theta|&lt;\frac\pi2.
+        \]
+      </div>
+      <p>Each cylindrical output pixel is mapped back through the reference plane to a source view and sampled directly. This avoids rendering a planar mosaic and then geometrically resampling that rendered image again. I also check extrema along the transformed image edges because curved boundaries can extend beyond the mapped corners.</p>
+      <p>This extension uses the existing planar alignment and a chosen focal length; it does not implement a calibrated, full 360-degree panorama. The focal length and the comparison below will be selected after the real photographs are available.</p>
+      <div class="figure-grid">
+        <figure><div class="photo-placeholder image-slot"><span class="placeholder-label">Planar projection</span><span>Same input views and alignment</span></div><figcaption>Reference comparison pending.</figcaption></figure>
+        <figure><div class="photo-placeholder image-slot"><span class="placeholder-label">Cylindrical projection</span><span>Chosen focal length: pending</span></div><figcaption>Result and distortion comparison pending.</figcaption></figure>
+      </div>
+    </section>
+
+    <section class="panel writeup-section project-section" id="discussion">
+      <p class="section-kicker">Analysis</p>
+      <h2>Results and What I Learned</h2>
+      <p class="pending-note">This section will be completed from the actual experiments. No photographic results or measured conclusions are claimed yet.</p>
+      <ul>
+        <li>Compare nearest-neighbor and bilinear results at the same output size, including measured computation times.</li>
+        <li>Inspect shared corners, edges, and other fine details to assess the estimated alignment.</li>
+        <li>Discuss visible seams, exposure differences, and any ghosting in the three mosaics.</li>
+        <li>Explain the main lesson from capture geometry, point selection, and resampling.</li>
+      </ul>
+    </section>
+
+    <section class="panel writeup-section planned-section project-section" id="part-b">
+      <p class="section-kicker">Part B · Reserved</p>
+      <h2>Automatic Correspondence Finding</h2>
+      <p>Part B will be added to this same project page. Its implementation, methods, and results are outside the current Part A draft.</p>
+    </section>
+
+    <footer class="page-footer">
+      <p class="source-links">
+        <a href="https://cal-cs180.github.io/fa26/hw/proj3/index.html">Project assignment</a>
+        <a href="https://cal-cs180.github.io/fa26/hw/proj3/partA.html">Part A requirements</a>
+        <a href="https://cal-cs180.github.io/fa23/hw/proj3/tool.html">Course-recommended point tool</a>
+      </p>
+      <p><a class="back-to-top" href="#top">Back to top ↑</a></p>
+    </footer>
+  </main>
+</body>
+</html>
