@@ -28,25 +28,9 @@
   <main class="page">
     <nav class="content-nav" aria-label="Project navigation">
       <a href="../index.html">Home</a>
-      <a href="#overview">Overview</a>
       <a href="#part-a">Part A</a>
       <a href="#part-b">Part B</a>
     </nav>
-
-    <section class="panel" id="overview">
-      <p class="section-kicker">Project overview</p>
-      <h2>From Overlapping Views to One Mosaic</h2>
-      <p>Two photographs can show different parts of the same scene while sharing an overlapping region. Matching the same features in that region lets me estimate a projective transformation, move both views into a common coordinate system, and combine them into a larger image.</p>
-      <div class="method-flow" aria-label="Implementation pipeline">
-        <span>Capture views</span>
-        <span>Select matches</span>
-        <span>Estimate H</span>
-        <span>Inverse warp</span>
-        <span>Blend</span>
-      </div>
-      <p>The implementation estimates homographies with NumPy least squares and implements both nearest-neighbor and bilinear sampling directly. Matplotlib <code>ginput</code> provides the manual point-selection interface. No high-level homography or perspective-warping functions are used.</p>
-      <p class="pending-note"><strong>Work in progress.</strong> The methods below describe the current implementation. Photographs, numerical homographies, timings, and visual observations will be added after the experiments. Empty slots are reserved for these results.</p>
-    </section>
 
     <div class="part-header" id="part-a">
       <p class="section-kicker">Part A</p>
