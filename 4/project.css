@@ -5,6 +5,11 @@
 .project-section, .part-header { scroll-margin-top: 20px; }
 .panel, .figure-grid > *, figure { min-width: 0; }
 .wide-figure { margin: 18px 0 28px; }
+.capture-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 18px; margin: 18px 0; }
+.source-pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; align-items: center; }
+.projection-comparison { align-items: start; }
+.rectification-grid figcaption { margin-bottom: 12px; }
+.rectification-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .image-slot { min-height: 190px; }
 .mosaic-slot { min-height: 240px; }
 .placeholder-label { color: #334155; font-weight: 600; }
@@ -12,6 +17,11 @@
 .formula mjx-container[display="true"] { margin: .35em 0 !important; }
 .source-links { display: flex; flex-wrap: wrap; gap: 16px; }
 .page-footer { margin-top: 20px; padding-top: 20px; border-top: 1px solid #e5e7eb; }
+
+@media (max-width: 700px) {
+  .rectification-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .rectification-grid > figure:first-child { grid-column: 1 / -1; max-width: 280px; justify-self: center; }
+}
 
 @media print {
   @page { size: A4 portrait; margin: 14mm; }
