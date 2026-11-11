@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="CS180 Project 4: homography estimation, inverse warping, rectification, and photo mosaics. Photographic results with manual feature selection, rectification, feathered mosaics, and cylindrical projection.">
+  <meta name="description" content="CS180 Project 4: manual and automatic image mosaics, from homographies and inverse warping to Harris corners, ANMS, patch descriptors, feature matching, and RANSAC.">
   <title>Project 4 | Fallmoon74 CS180 Portfolio</title>
   <link rel="stylesheet" href="../style.css">
   <link rel="stylesheet" href="./project.css">
@@ -21,7 +21,7 @@
   <header class="site-header" id="top">
     <p class="eyebrow">CS180 Project 4 · Yanzhen Ning</p>
     <h1>Image Warping and Mosaicing</h1>
-    <p class="lede">Aligning overlapping photographs through projective geometry</p>
+    <p class="lede">Manual and automatic alignment of overlapping photographs</p>
     <p class="site-url"><a href="https://fallmoon74.github.io/4/">https://fallmoon74.github.io/4/</a></p>
   </header>
 
@@ -279,10 +279,176 @@
     </section>
 
 
-    <section class="panel writeup-section planned-section project-section" id="part-b">
-      <p class="section-kicker">Part B · Reserved</p>
+    <div class="part-header" id="part-b">
+      <p class="section-kicker">Part B</p>
       <h2>Automatic Correspondence Finding</h2>
-      <p>Part B will be added to this same project page.</p>
+      <nav class="content-nav" aria-label="Part B sections">
+        <a href="#b-1">B.1 Harris &amp; ANMS</a>
+        <a href="#b-2">B.2 Descriptors</a>
+        <a href="#b-3">B.3 Matching</a>
+        <a href="#b-4">B.4 RANSAC &amp; Mosaics</a>
+      </nav>
+    </div>
+
+    <section class="panel writeup-section project-section" id="b-1">
+      <p class="section-kicker">Part B · B.1</p>
+      <h2>Harris Corners and ANMS</h2>
+      <p>I use the <a href="https://cal-cs180.github.io/fa26/hw/proj3/harris.py">supplied Harris detector</a> at a single scale. A corner has strong intensity changes in two directions, making it easier to locate in another view. The detector uses the following response, with a Gaussian scale of 1 pixel:</p>
+      <div class="formula">
+        \[
+        M=G_1*\begin{bmatrix}I_x^2&amp;I_xI_y\\I_xI_y&amp;I_y^2\end{bmatrix},
+        \qquad R=\frac{2\det M}{\operatorname{tr}M+\epsilon}.
+        \]
+      </div>
+      <p>I discard points within 20 pixels of the boundary and keep local peaks with \(R_i&gt;0.005R_{\max}\). Simply keeping the 500 strongest responses can crowd points into highly textured areas. Adaptive Non-Maximal Suppression (ANMS) spreads them out:</p>
+      <div class="formula">
+        \[
+        r_i=\min_{j:\,R_i&lt;0.9R_j}\lVert\mathbf p_i-\mathbf p_j\rVert_2.
+        \]
+      </div>
+      <p>Each radius measures the distance to a sufficiently stronger corner. If none exists, the radius is infinite. I keep the 500 points with the largest radii, giving both strong responses and wider image coverage.</p>
+      <figure class="wide-figure">
+        <a href="./fig/2_1/3_1.png"><img src="./fig/2_1/3_1.png" alt="Residential street: thresholded Harris corners, 500 strongest corners, and 500 ANMS corners" width="2250" height="750" loading="lazy" decoding="async"></a>
+        <figcaption>Residential street, first view. Left: 30,423 thresholded Harris peaks. Middle: 500 strongest responses. Right: 500 ANMS points, with less clustering around foliage.</figcaption>
+      </figure>
+      <figure class="wide-figure">
+        <a href="./fig/2_1/1_1.png"><img src="./fig/2_1/1_1.png" alt="Kitchen: thresholded Harris corners compared with strongest-response and ANMS selection" width="2250" height="750" loading="lazy" decoding="async"></a>
+        <figcaption>Kitchen, first view. ANMS reduces 4,858 thresholded peaks to 500 points. Blank walls still provide few useful features.</figcaption>
+      </figure>
+    </section>
+
+    <section class="panel writeup-section project-section" id="b-2">
+      <p class="section-kicker">Part B · B.2</p>
+      <h2>Feature Descriptors</h2>
+      <p>For each selected point, I describe a 40 × 40 grayscale neighborhood with an 8 × 8 patch. I first blur the image with a Gaussian of scale 2 pixels, then sample every 5 pixels using bilinear interpolation:</p>
+      <div class="formula">
+        \[
+        I_b=G_2*I_{\mathrm{gray}},
+        \qquad u,v\in\{0,\ldots,7\},
+        \]
+        \[
+        P_i[v,u]=I_b(x_i+5u-17.5,\ y_i+5v-17.5).
+        \]
+      </div>
+      <p>Subtracting the patch mean and dividing by its standard deviation reduces the effect of brightness and contrast differences. Flattening the result gives a 64-number descriptor:</p>
+      <div class="formula">
+        \[
+        \mathbf d_i=\operatorname{vec}\!\left(\frac{P_i-\mu_i}{s_i}\right)
+        \in\mathbb R^{64}.
+        \]
+      </div>
+      <p>The patches stay aligned with the image axes; this version does not compensate for rotation. All 500 selected points in each image produced valid descriptors.</p>
+      <figure class="wide-figure">
+        <a href="./fig/2_2/3_1.png"><img src="./fig/2_2/3_1.png" alt="Six residential street neighborhoods and their normalized 8 by 8 descriptors from the first view" width="1800" height="600" loading="lazy" decoding="async"></a>
+        <figcaption>First view: six original 40 × 40 neighborhoods above their normalized 8 × 8 descriptors.</figcaption>
+      </figure>
+      <figure class="wide-figure">
+        <a href="./fig/2_2/3_2.png"><img src="./fig/2_2/3_2.png" alt="Six neighborhoods and normalized descriptors from the residential street reference view" width="1800" height="600" loading="lazy" decoding="async"></a>
+        <figcaption>Reference view: the smaller patches retain broad structures such as edges, windows, and corners.</figcaption>
+      </figure>
+    </section>
+
+    <section class="panel writeup-section project-section" id="b-3">
+      <p class="section-kicker">Part B · B.3</p>
+      <h2>Match the Features</h2>
+      <p>I compare each source descriptor against all descriptors in the reference image using the sum of squared differences (SSD). A match is kept only when the nearest candidate is clearly better than the second nearest:</p>
+      <div class="formula">
+        \[
+        D_{ij}=\lVert\mathbf d_i-\mathbf d'_j\rVert_2^2,
+        \qquad D_{i,j_1}\leq D_{i,j_2}\leq\cdots,
+        \]
+        \[
+        \frac{D_{i,j_1}}{D_{i,j_2}}&lt;0.6.
+        \]
+      </div>
+      <p>The threshold of 0.6 applies to squared distances. This ratio test rejects many ambiguous patches, but some incorrect matches remain. No manually selected points are used in this step.</p>
+      <figure class="wide-figure">
+        <a href="./fig/2_3/3.png"><img src="./fig/2_3/3.png" alt="92 descriptor matches between the two residential street photographs before RANSAC" width="2100" height="1050" loading="lazy" decoding="async"></a>
+        <figcaption>Residential street: 92 matches. Many connect the same house and pole features; some connect unrelated details.</figcaption>
+      </figure>
+      <figure class="wide-figure">
+        <a href="./fig/2_3/2.png"><img src="./fig/2_3/2.png" alt="84 descriptor matches between the street corner photographs before RANSAC" width="2100" height="1050" loading="lazy" decoding="async"></a>
+        <figcaption>Street corner: 84 matches. Repeated windows, foliage, and road texture can still cause confusion.</figcaption>
+      </figure>
+      <figure class="wide-figure">
+        <a href="./fig/2_3/1.png"><img src="./fig/2_3/1.png" alt="94 descriptor matches between the kitchen photographs before RANSAC" width="2100" height="1050" loading="lazy" decoding="async"></a>
+        <figcaption>Kitchen: 94 matches. Similar cabinet corners and edges produce several obvious mismatches.</figcaption>
+      </figure>
+    </section>
+
+    <section class="panel writeup-section project-section" id="b-4">
+      <p class="section-kicker">Part B · B.4</p>
+      <h2>RANSAC and Automatic Mosaics</h2>
+      <p>I implement four-point RANSAC from scratch. Each of 10,000 trials samples four matches and fits a homography using the solver from Part A. Samples with collinear triples are skipped.</p>
+      <p>A good homography should map a match correctly in both directions. I use the larger of the forward and backward errors, measured at the 1600-pixel input scale. A tilde appends a 1 to a 2D point, and \(\pi\) divides by the last coordinate:</p>
+      <div class="formula">
+        \[
+        \begin{aligned}
+        e_i^{\to}&amp;=\lVert\pi(H\widetilde{\mathbf p}_i)-\mathbf q_i\rVert_2,\\
+        e_i^{\leftarrow}&amp;=\lVert\pi(H^{-1}\widetilde{\mathbf q}_i)-\mathbf p_i\rVert_2,\\
+        e_i(H)&amp;=\max(e_i^{\to},e_i^{\leftarrow}).
+        \end{aligned}
+        \]
+        \[
+        \mathcal I(H)=\{i:e_i(H)&lt;3\},
+        \qquad H^*=\underset{H}{\operatorname{arg\,max}}\,|\mathcal I(H)|.
+        \]
+      </div>
+      <p>I refit the best model using all its inliers and update the inlier set, stopping when it stays unchanged or after five fits. A fixed random seed makes the results repeatable. Finally, I keep the second photo fixed and use Part A's bilinear inverse warping and feathered blending.</p>
+      <div class="table-wrap">
+        <table class="results-table">
+          <caption>Automatic alignment results</caption>
+          <thead><tr><th scope="col">Scene</th><th scope="col">Initial matches</th><th scope="col">RANSAC inliers</th><th scope="col">Inlier RMSE (px)</th></tr></thead>
+          <tbody>
+            <tr><th scope="row">Residential street</th><td>92</td><td>44</td><td>1.33</td></tr>
+            <tr><th scope="row">Street corner</th><td>84</td><td>47</td><td>1.60</td></tr>
+            <tr><th scope="row">Kitchen</th><td>94</td><td>22</td><td>1.32</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>The RMSE uses the same bidirectional error \(e_i\) on the final inliers. It measures how well those points fit, rather than the alignment quality of every pixel.</p>
+
+      <h3 id="b-4-1">Automatic Mosaic 01: Residential Street</h3>
+      <figure class="wide-figure">
+        <a href="./fig/2_4/3_1.png"><img src="./fig/2_4/3_1.png" alt="44 residential street matches retained by RANSAC" width="2100" height="1050" loading="lazy" decoding="async"></a>
+        <figcaption>RANSAC keeps 44 of 92 matches, mainly on shared building, pole, and vehicle details.</figcaption>
+      </figure>
+      <figure class="wide-figure">
+        <a href="./fig/2_4/3_3.png"><img src="./fig/2_4/3_3.png" alt="Residential street mosaics side by side: manual correspondences on the left and automatic RANSAC on the right" width="2100" height="900" loading="lazy" decoding="async"></a>
+        <figcaption>Left: manual alignment. Right: automatic alignment. Both use the same reference view, rendering method, and display scale. The roof, windows, and pole align well overall; some car and foliage edges still show ghosting. <a href="./fig/2_4/3_2.png">Full-size automatic mosaic</a>.</figcaption>
+      </figure>
+
+      <h3 id="b-4-2">Automatic Mosaic 02: Street Corner</h3>
+      <figure class="wide-figure">
+        <a href="./fig/2_4/2_1.png"><img src="./fig/2_4/2_1.png" alt="47 street corner matches retained by RANSAC" width="2100" height="1050" loading="lazy" decoding="async"></a>
+        <figcaption>RANSAC keeps 47 of 84 matches, rejecting many unrelated road and foliage points.</figcaption>
+      </figure>
+      <figure class="wide-figure">
+        <a href="./fig/2_4/2_3.png"><img src="./fig/2_4/2_3.png" alt="Street corner mosaics side by side: manual alignment on the left and automatic alignment on the right" width="2100" height="900" loading="lazy" decoding="async"></a>
+        <figcaption>The automatic result is close to the manual result around the house and parked vehicles. Some thin wires and car edges remain doubled. The left side is stretched in both planar mosaics. <a href="./fig/2_4/2_2.png">Full-size automatic mosaic</a>.</figcaption>
+      </figure>
+
+      <h3 id="b-4-3">Automatic Mosaic 03: Kitchen</h3>
+      <figure class="wide-figure">
+        <div class="source-pair"><a href="./fig/1_1/1_1.jpg"><img src="./fig/1_1/1_1.jpg" alt="Kitchen source photograph IMG_6363" width="1600" height="1200" loading="lazy" decoding="async"></a><a href="./fig/1_1/1_2.jpg"><img src="./fig/1_1/1_2.jpg" alt="Kitchen reference photograph IMG_6364" width="1600" height="1200" loading="lazy" decoding="async"></a></div>
+        <figcaption>Kitchen source photographs: IMG_6363 and IMG_6364. The right photo is the reference.</figcaption>
+      </figure>
+      <figure class="wide-figure">
+        <a href="./fig/2_4/1_1.png"><img src="./fig/2_4/1_1.png" alt="22 kitchen matches retained by RANSAC" width="2100" height="1050" loading="lazy" decoding="async"></a>
+        <figcaption>RANSAC keeps 22 of 94 matches. Despite the many initial mismatches, the remaining points support a consistent alignment.</figcaption>
+      </figure>
+      <figure class="wide-figure">
+        <a href="./fig/2_4/1_3.png"><img src="./fig/2_4/1_3.png" alt="Kitchen mosaics side by side: manual alignment on the left and automatic alignment on the right" width="2100" height="900" loading="lazy" decoding="async"></a>
+        <figcaption>The automatic result forms a similar overall view to the manual result. The nearby counter items and mop still show ghosting, while the refrigerator is enlarged toward the left. <a href="./fig/2_4/1_2.png">Full-size automatic mosaic</a>.</figcaption>
+      </figure>
+
+      <h3>A Difficult Pair: California Sushi</h3>
+      <figure class="wide-figure">
+        <a href="./fig/2_3/4.png"><img src="./fig/2_3/4.png" alt="35 tentative California sushi matches, including many points mapped to the same target feature" width="2100" height="1050" loading="lazy" decoding="async"></a>
+        <figcaption>The ratio test keeps 35 matches, but many source points connect to the same target location.</figcaption>
+      </figure>
+      <p>The narrow overlap and repetitive plush texture leave too few reliable matches. RANSAC does not recover a useful panorama for this pair. Raising the SSD ratio threshold to 0.8 or 0.9 adds matches but still does not give a reliable alignment. I keep the manually aligned result in Part A and use the three successful scenes above for the automatic comparison.</p>
+      <p>These results show why descriptor matching needs a geometric check: a patch can look similar in the wrong place. RANSAC removes many of those errors, but it cannot fix parallax, movement, or a lack of shared features.</p>
     </section>
   </main>
 </body>

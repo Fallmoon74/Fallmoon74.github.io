@@ -5,6 +5,7 @@
 .project-section, .part-header { scroll-margin-top: 20px; }
 .panel, .figure-grid > *, figure { min-width: 0; }
 .wide-figure { margin: 18px 0 28px; }
+.writeup-section p a, .writeup-section figcaption a { color: #1d4ed8; text-decoration: underline; }
 .capture-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 18px; margin: 18px 0; }
 .source-pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; align-items: center; }
 .projection-comparison { align-items: start; }
