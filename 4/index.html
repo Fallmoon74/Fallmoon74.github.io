@@ -22,54 +22,41 @@
     <p class="eyebrow">CS180 Project 4 · Yanzhen Ning</p>
     <h1>Image Warping and Mosaicing</h1>
     <p class="lede">Manual and automatic alignment of overlapping photographs</p>
-    <p class="site-url"><a href="https://fallmoon74.github.io/4/">https://fallmoon74.github.io/4/</a></p>
   </header>
 
   <main class="page">
-    <nav class="content-nav" aria-label="Project navigation">
-      <a href="../index.html">Home</a>
-      <a href="#part-a">Part A</a>
-      <a href="#part-b">Part B</a>
-    </nav>
 
     <div class="part-header" id="part-a">
       <p class="section-kicker">Part A</p>
       <h2>Image Warping and Mosaicing</h2>
-      <nav class="content-nav" aria-label="Part A sections">
-        <a href="#a-1">A.1 Capture</a>
-        <a href="#a-2">A.2 Homographies</a>
-        <a href="#a-3">A.3 Warping &amp; Rectification</a>
-        <a href="#a-4">A.4 Mosaics</a>
-        <a href="#a-5">A.5 Cylindrical Projection</a>
-      </nav>
     </div>
 
     <section class="panel writeup-section project-section" id="a-1">
       <p class="section-kicker">Part A · A.1</p>
       <h2>Shoot the Pictures</h2>
-      <p>I photographed two street scenes and a California sushi plush indoors, using two overlapping views for each scene. Before selecting points, I resized each photo so its longest side was 1600 pixels. The second photo in each pair is the reference view.</p>
-      <h3>Why Camera Rotation Matters</h3>
-      <p>With a fixed camera center, a scene point is observed along the same spatial ray before and after rotation. Its depth cancels, so a single homography can relate the two images. If the intrinsic calibration is unchanged and R maps camera-1 coordinates into camera-2 coordinates, the ideal relationship is:</p>
+      <p>I took two overlapping photos for each scene. I resized them to a maximum of 1600 pixels on the long side and used the second photo as the reference.</p>
+      <h3>Rotating the Camera</h3>
+      <p>I tried to rotate the camera without moving it sideways. This lets one homography align the two views. With camera matrix K and rotation R:</p>
       <div class="formula">
         \[
         \mathbf p_2 \sim H\mathbf p_1,
         \qquad H=KRK^{-1}.
         \]
       </div>
-      <p>Here, K is the intrinsic camera matrix and \(\sim\) means equality up to a nonzero scale. Moving the camera sideways introduces depth-dependent parallax, especially for nearby objects, which one homography generally cannot remove. Static, distant scenes and minimal camera translation make the model more appropriate.</p>
+      <p>K describes the camera, and \(\sim\) means the points are equal up to scale. Moving the camera sideways can make nearby and distant objects shift differently, so they may not all line up.</p>
 
       <div class="capture-grid">
         <figure id="capture-set-3">
-          <div class="source-pair"><a href="./fig/1_1/3_1.jpg"><img src="./fig/1_1/3_1.jpg" alt="Source photograph IMG_6367" width="1600" height="1200" loading="lazy" decoding="async"></a><a href="./fig/1_1/3_2.jpg"><img src="./fig/1_1/3_2.jpg" alt="Reference photograph IMG_6368" width="1600" height="1200" loading="lazy" decoding="async"></a></div>
-          <figcaption><strong>Residential street.</strong> Buildings, cars, and a utility pole provide shared features.</figcaption>
+          <div class="source-pair"><img src="./fig/1_1/3_1.jpg" alt="Source photograph IMG_6367" width="1600" height="1200" loading="lazy" decoding="async"><img src="./fig/1_1/3_2.jpg" alt="Reference photograph IMG_6368" width="1600" height="1200" loading="lazy" decoding="async"></div>
+          <figcaption><strong>Residential street.</strong> The buildings, cars, and pole appear in both photos.</figcaption>
         </figure>
         <figure id="capture-set-4">
-          <div class="source-pair"><a href="./fig/1_1/4_1.jpg"><img src="./fig/1_1/4_1.jpg" alt="Source photograph IMG_6381" width="1200" height="1600" loading="lazy" decoding="async"></a><a href="./fig/1_1/4_2.jpg"><img src="./fig/1_1/4_2.jpg" alt="Reference photograph IMG_6382" width="1200" height="1600" loading="lazy" decoding="async"></a></div>
-          <figcaption><strong>California sushi.</strong> Only a narrow strip of the plush appears in both views, making alignment harder.</figcaption>
+          <div class="source-pair"><img src="./fig/1_1/4_1.jpg" alt="Source photograph IMG_6381" width="1200" height="1600" loading="lazy" decoding="async"><img src="./fig/1_1/4_2.jpg" alt="Reference photograph IMG_6382" width="1200" height="1600" loading="lazy" decoding="async"></div>
+          <figcaption><strong>California sushi.</strong> The overlap is small, so matching is harder.</figcaption>
         </figure>
         <figure id="capture-set-2">
-          <div class="source-pair"><a href="./fig/1_1/2_1.jpg"><img src="./fig/1_1/2_1.jpg" alt="Source photograph IMG_6365" width="1600" height="1200" loading="lazy" decoding="async"></a><a href="./fig/1_1/2_2.jpg"><img src="./fig/1_1/2_2.jpg" alt="Reference photograph IMG_6366" width="1600" height="1200" loading="lazy" decoding="async"></a></div>
-          <figcaption><strong>Street corner.</strong> The shared house and parked vehicles provide features at different heights.</figcaption>
+          <div class="source-pair"><img src="./fig/1_1/2_1.jpg" alt="Source photograph IMG_6365" width="1600" height="1200" loading="lazy" decoding="async"><img src="./fig/1_1/2_2.jpg" alt="Reference photograph IMG_6366" width="1600" height="1200" loading="lazy" decoding="async"></div>
+          <figcaption><strong>Street corner.</strong> I used details on the house and parked cars.</figcaption>
         </figure>
       </div>
     </section>
@@ -77,9 +64,9 @@
     <section class="panel writeup-section project-section" id="a-2">
       <p class="section-kicker">Part A · A.2</p>
       <h2>Recover Homographies</h2>
-      <p>I identified matching features by inspecting both photos and refined their locations with local normalized cross-correlation. I used 12 pairs for the residential street, 10 for the California sushi, and 22 for the street corner. Each set has more than four pairs, giving an overdetermined system.</p>
+      <p>I picked the same features in both photos and used local normalized cross-correlation to refine the points. I used 12 pairs for the residential street, 10 for the California sushi, and 22 for the street corner.</p>
       <h3>Projective Mapping</h3>
-      <p>Points use (x, y) coordinates, while image arrays are indexed as [y, x]. A source-to-reference homography has eight independent parameters after fixing its bottom-right entry to one:</p>
+      <p>I store points as (x, y). The homography H maps a point to the other image. Setting its last entry to 1 leaves eight values to solve for:</p>
       <div class="formula">
         \[
         \lambda\begin{bmatrix}u\\v\\1\end{bmatrix}
@@ -97,7 +84,7 @@
         \end{aligned}
         \]
       </div>
-      <p>Multiplying out the denominators gives two linear constraints per correspondence. Stacking N pairs produces a \(2N\times8\) system:</p>
+      <p>Each matching pair gives two equations. With N pairs, I solve a \(2N\times8\) system:</p>
       <div class="formula">
         \[
         \underbrace{\begin{bmatrix}
@@ -110,8 +97,8 @@
         =\underbrace{\begin{bmatrix}u_i\\v_i\end{bmatrix}}_{\mathbf b_i}.
         \]
       </div>
-      <h3>Normalization and Least Squares</h3>
-      <p>Large pixel coordinates can make the system poorly conditioned. Before constructing the system, I normalize each point set independently: translate its centroid to the origin and scale its mean distance from the origin to \(\sqrt{2}\).</p>
+      <h3>Normalizing the Points</h3>
+      <p>To make the solve more stable, I center each point set and scale its average distance to \(\sqrt{2}\). I fit H with least squares, then convert it back to the original coordinates:</p>
       <div class="formula">
         \[
         \mathbf c=\frac1N\sum_i\mathbf p_i,
@@ -129,39 +116,39 @@
 
       <h3>Residential street</h3>
       <figure class="wide-figure">
-        <a href="./fig/1_2/3.png"><img src="./fig/1_2/3.png" alt="Numbered corresponding points for the residential street pair" width="2100" height="900" loading="lazy" decoding="async"></a>
-        <figcaption>IMG_6367 → IMG_6368; 12 point pairs. The same number marks the same feature in both views.</figcaption>
+        <img src="./fig/1_2/3.png" alt="Numbered corresponding points for the residential street pair" width="2100" height="900" loading="lazy" decoding="async">
+        <figcaption>IMG_6367 → IMG_6368; 12 point pairs. Matching numbers show the same feature.</figcaption>
       </figure>
       <div class="formula">
         \[ H=\begin{bmatrix} 2.360805 &amp; 0.03533 &amp; -1661.474742 \\ 0.470541 &amp; 1.906071 &amp; -472.98402 \\ 8.48315\times10^{-4} &amp; -3.621282\times10^{-5} &amp; 1 \end{bmatrix}. \]
       </div>
-      <p>The point-fitting RMSE is 1.26 pixels at the processed image scale.</p>
+      <p>The point-fitting RMSE is 1.26 pixels.</p>
       <h3>California sushi</h3>
       <figure class="wide-figure">
-        <a href="./fig/1_2/4.png"><img src="./fig/1_2/4.png" alt="Numbered corresponding points for the California sushi pair" width="1431" height="919" loading="lazy" decoding="async"></a>
-        <figcaption>IMG_6381 → IMG_6382; 10 point pairs. The same number marks the same feature in both views.</figcaption>
+        <img src="./fig/1_2/4.png" alt="Numbered corresponding points for the California sushi pair" width="1431" height="919" loading="lazy" decoding="async">
+        <figcaption>IMG_6381 → IMG_6382; 10 point pairs. Matching numbers show the same feature.</figcaption>
       </figure>
       <div class="formula">
         \[ H=\begin{bmatrix} 2.14324 &amp; -0.072785 &amp; -2383.557117 \\ 0.926078 &amp; 2.147028 &amp; -970.171294 \\ 1.102325\times10^{-3} &amp; 3.931547\times10^{-5} &amp; 1 \end{bmatrix}. \]
       </div>
-      <p>The point-fitting RMSE is 1.11 pixels at the processed image scale.</p>
+      <p>The point-fitting RMSE is 1.11 pixels.</p>
       <h3>Street corner</h3>
       <figure class="wide-figure">
-        <a href="./fig/1_2/2.png"><img src="./fig/1_2/2.png" alt="Numbered corresponding points for the street corner pair" width="2100" height="900" loading="lazy" decoding="async"></a>
-        <figcaption>IMG_6365 → IMG_6366; 22 point pairs. The same number marks the same feature in both views.</figcaption>
+        <img src="./fig/1_2/2.png" alt="Numbered corresponding points for the street corner pair" width="2100" height="900" loading="lazy" decoding="async">
+        <figcaption>IMG_6365 → IMG_6366; 22 point pairs. Matching numbers show the same feature.</figcaption>
       </figure>
       <div class="formula">
         \[ H=\begin{bmatrix} 2.465159 &amp; -0.161293 &amp; -1552.130042 \\ 0.663782 &amp; 1.999158 &amp; -728.022185 \\ 9.379559\times10^{-4} &amp; -1.868436\times10^{-5} &amp; 1 \end{bmatrix}. \]
       </div>
-      <p>The point-fitting RMSE is 2.04 pixels at the processed image scale.</p>
-      <p>The California sushi points occupy a narrow strip. Their low fitting error does not guarantee accurate alignment elsewhere in the image.</p>
+      <p>The point-fitting RMSE is 2.04 pixels.</p>
+      <p>The sushi points cover only a thin strip, so a small fitting error does not mean the whole image lines up well.</p>
     </section>
 
     <section class="panel writeup-section project-section" id="a-3">
       <p class="section-kicker">Part A · A.3</p>
       <h2>Warp the Images and Rectify Planes</h2>
-      <h3>A Common Canvas and Inverse Mapping</h3>
-      <p>I treat integer coordinates as pixel centers. An image of width W and height H therefore has corner centers at (0, 0), (W − 1, 0), (W − 1, H − 1), and (0, H − 1). I round the minimum coordinates down and the maximum coordinates up, including both endpoint pixels.</p>
+      <h3>Canvas and Inverse Warping</h3>
+      <p>I transform the image corners to find a canvas that fits the result. I round the bounds outward and include both end pixels:</p>
       <div class="formula">
         \[
         W_{\mathrm{out}}=x_{\max}-x_{\min}+1,
@@ -176,9 +163,9 @@
         \qquad (x_s,y_s)=\left(\frac{X_s}{Z_s},\frac{Y_s}{Z_s}\right).
         \]
       </div>
-      <p>For each output pixel [i, j], I find its continuous source coordinate and sample there. This inverse procedure avoids the holes produced by scattering source pixels onto a destination grid. The canvas origin may be negative; its offset must be added before applying the inverse matrix.</p>
-      <h3>Two Interpolation Methods from Scratch</h3>
-      <p>Nearest-neighbor interpolation rounds the source coordinate to the closest pixel center:</p>
+      <p>For each output pixel, I use the inverse homography to find where to sample in the source image. This avoids leaving holes. The canvas offset is added before applying H inverse.</p>
+      <h3>Nearest Neighbor and Bilinear</h3>
+      <p>Nearest neighbor takes the closest source pixel:</p>
       <div class="formula">
         \[
         I_{\mathrm{NN}}(x,y)=
@@ -186,7 +173,7 @@
         \left\lfloor y+\tfrac12\right\rfloor\right).
         \]
       </div>
-      <p>Bilinear interpolation uses the four neighboring pixels. For \(x_0=\lfloor x\rfloor\), \(y_0=\lfloor y\rfloor\), \(a=x-x_0\), and \(b=y-y_0\):</p>
+      <p>Bilinear interpolation averages four neighboring pixels. Let \(x_0=\lfloor x\rfloor\), \(y_0=\lfloor y\rfloor\), \(a=x-x_0\), and \(b=y-y_0\):</p>
       <div class="formula">
         \[
         \begin{aligned}
@@ -196,9 +183,9 @@
         \end{aligned}
         \]
       </div>
-      <p>The implementation clamps the upper neighbor at the final row or column and applies the same weights independently to each color channel. Nearest neighbor preserves discrete samples but can produce jagged edges. Bilinear usually gives smoother transitions, at the cost of more arithmetic and some softening. The measurements below compare both methods on the same output grids.</p>
+      <p>I wrote both methods from scratch. Nearest neighbor is faster but can look jagged. Bilinear takes more work and usually looks smoother.</p>
       <h3>Rectification</h3>
-      <p>A known rectangle supplies a simple geometric test. I select its corners in perimeter order—top left, top right, bottom right, bottom left—and map them to a front-facing rectangle. The output width-to-height ratio should match the object's known proportions. A square target is appropriate for a square tile, but not for every rectangular object.</p>
+      <p>I picked four corners in order: top left, top right, bottom right, and bottom left. I mapped them to a front-facing rectangle with the same shape as the object:</p>
       <div class="formula">
         \[
         \mathbf p_1,\mathbf p_2,\mathbf p_3,\mathbf p_4
@@ -206,20 +193,20 @@
         (0,0),\ (W_r-1,0),\ (W_r-1,H_r-1),\ (0,H_r-1).
         \]
       </div>
-      <p>Here four corner pairs define the desired plane-to-plane mapping. I render both methods with the same H and output dimensions, time only the warp computation, and save the two images separately for comparison.</p>
+      <p>I used the same H and output size for both methods. The timings below measure only the image warp.</p>
       <h3>Rectification: CD Cover</h3>
-      <p>I selected the four corners of the square paper insert, excluding the black case spine.</p>
+      <p>I picked the corners of the square paper cover, leaving out the black case spine.</p>
       <div class="figure-grid three-up rectification-grid">
-        <figure><a href="./fig/1_3/1_0.jpg"><img src="./fig/1_3/1_0.jpg" alt="Oblique cd cover photograph with four selected corners" width="1200" height="1600" loading="lazy" decoding="async"></a><figcaption>Original with selected corners.</figcaption></figure>
-        <figure><a href="./fig/1_3/1_1.png"><img src="./fig/1_3/1_1.png" alt="CD Cover rectified with nearest-neighbor interpolation" width="1000" height="1000" loading="lazy" decoding="async"></a><figcaption>Nearest neighbor · 1000 × 1000.</figcaption></figure>
-        <figure><a href="./fig/1_3/1_2.png"><img src="./fig/1_3/1_2.png" alt="CD Cover rectified with bilinear interpolation" width="1000" height="1000" loading="lazy" decoding="async"></a><figcaption>Bilinear · 1000 × 1000.</figcaption></figure>
+        <figure><img src="./fig/1_3/1_0.jpg" alt="Oblique cd cover photograph with four selected corners" width="1200" height="1600" loading="lazy" decoding="async"><figcaption>Original with selected corners.</figcaption></figure>
+        <figure><img src="./fig/1_3/1_1.png" alt="CD Cover rectified with nearest-neighbor interpolation" width="1000" height="1000" loading="lazy" decoding="async"><figcaption>Nearest neighbor · 1000 × 1000.</figcaption></figure>
+        <figure><img src="./fig/1_3/1_2.png" alt="CD Cover rectified with bilinear interpolation" width="1000" height="1000" loading="lazy" decoding="async"><figcaption>Bilinear · 1000 × 1000.</figcaption></figure>
       </div>
       <h3>Rectification: Bank Card</h3>
-      <p>I used the intersections of the straight edges, rather than the rounded corners, and chose a portrait target with a width-to-height ratio of 540:856.</p>
+      <p>I used the straight edges to estimate the card corners and set the output to 540 × 856 pixels.</p>
       <div class="figure-grid three-up rectification-grid">
-        <figure><a href="./fig/1_3/2_0.jpg"><img src="./fig/1_3/2_0.jpg" alt="Oblique bank card photograph with four selected corners" width="1200" height="1600" loading="lazy" decoding="async"></a><figcaption>Original with selected corners.</figcaption></figure>
-        <figure><a href="./fig/1_3/2_1.png"><img src="./fig/1_3/2_1.png" alt="Bank Card rectified with nearest-neighbor interpolation" width="540" height="856" loading="lazy" decoding="async"></a><figcaption>Nearest neighbor · 540 × 856.</figcaption></figure>
-        <figure><a href="./fig/1_3/2_2.png"><img src="./fig/1_3/2_2.png" alt="Bank Card rectified with bilinear interpolation" width="540" height="856" loading="lazy" decoding="async"></a><figcaption>Bilinear · 540 × 856.</figcaption></figure>
+        <figure><img src="./fig/1_3/2_0.jpg" alt="Oblique bank card photograph with four selected corners" width="1200" height="1600" loading="lazy" decoding="async"><figcaption>Original with selected corners.</figcaption></figure>
+        <figure><img src="./fig/1_3/2_1.png" alt="Bank Card rectified with nearest-neighbor interpolation" width="540" height="856" loading="lazy" decoding="async"><figcaption>Nearest neighbor · 540 × 856.</figcaption></figure>
+        <figure><img src="./fig/1_3/2_2.png" alt="Bank Card rectified with bilinear interpolation" width="540" height="856" loading="lazy" decoding="async"><figcaption>Bilinear · 540 × 856.</figcaption></figure>
       </div>
       <div class="table-wrap">
         <table class="results-table">
@@ -231,15 +218,15 @@
           </tbody>
         </table>
       </div>
-      <p>Nearest neighbor was about three times faster in this run. On the card, it leaves more jagged edges around the text and lion pattern; bilinear smooths these steps. The CD photo is already blurry, so the difference is less visible. Neither method restores detail missing from the original photograph. Both outputs cover the full target rectangle without holes.</p>
+      <p>Nearest neighbor was about three times faster. Bilinear looks smoother around the card text. The CD photo was already blurry, so the difference is smaller.</p>
     </section>
 
     <section class="panel writeup-section project-section" id="a-4">
       <p class="section-kicker">Part A · A.4</p>
       <h2>Blend the Images into Mosaics</h2>
-      <p>I use one photo as the reference and warp the others to line up with it. A larger canvas holds all the photos.</p>
+      <p>I keep one photo fixed and warp the other onto a larger canvas.</p>
       <h3>Blending the Images</h3>
-      <p>Where photos overlap, I mix their colors. Pixels near the center get more weight, while edge pixels get less. Each aligned photo \(I_i\) contributes according to its weight \(w_i\), which is zero outside the photo:</p>
+      <p>I blend the overlapping colors instead of replacing one photo with the other. Pixels near the center get more weight. In the formula, \(I_i\) is a warped photo and \(w_i\) is its weight, set to zero outside the photo:</p>
       <div class="formula">
         \[
         I_{\mathrm{mosaic}}(p)=
@@ -247,22 +234,22 @@
         {\sum_i w_i(p)}.
         \]
       </div>
-      <p>This softens seams, but misaligned photos may still produce double edges. Uncovered pixels remain transparent.</p>
+      <p>This makes the seam less sharp. Misaligned details can still look doubled, and empty areas stay transparent.</p>
       <h3>Mosaic 01: Residential street</h3>
-      <figure class="wide-figure"><div class="source-pair"><a href="./fig/1_1/3_1.jpg"><img src="./fig/1_1/3_1.jpg" alt="Source photograph IMG_6367" width="1600" height="1200" loading="lazy" decoding="async"></a><a href="./fig/1_1/3_2.jpg"><img src="./fig/1_1/3_2.jpg" alt="Reference photograph IMG_6368" width="1600" height="1200" loading="lazy" decoding="async"></a></div><figcaption>Source photographs: IMG_6367 and IMG_6368. The right photo is the reference.</figcaption></figure>
-      <figure class="wide-figure"><a href="./fig/1_4/3.png"><img src="./fig/1_4/3.png" alt="Feathered planar mosaic of the residential street" width="3293" height="2369" loading="lazy" decoding="async"></a><figcaption>The house roof and window outlines line up well overall. Local ghosting remains around foliage and some vehicles. The left side is enlarged by the planar projection.</figcaption></figure>
+      <figure class="wide-figure"><div class="source-pair"><img src="./fig/1_1/3_1.jpg" alt="Source photograph IMG_6367" width="1600" height="1200" loading="lazy" decoding="async"><img src="./fig/1_1/3_2.jpg" alt="Reference photograph IMG_6368" width="1600" height="1200" loading="lazy" decoding="async"></div><figcaption>Source photographs: IMG_6367 and IMG_6368. The right photo is the reference.</figcaption></figure>
+      <figure class="wide-figure"><img src="./fig/1_4/3.png" alt="Feathered planar mosaic of the residential street" width="3293" height="2369" loading="lazy" decoding="async"><figcaption>The roof and windows mostly line up. Some trees and cars look doubled, and the left side is stretched.</figcaption></figure>
       <h3>Mosaic 02: California sushi</h3>
-      <figure class="wide-figure"><div class="source-pair"><a href="./fig/1_1/4_1.jpg"><img src="./fig/1_1/4_1.jpg" alt="Source photograph IMG_6381" width="1200" height="1600" loading="lazy" decoding="async"></a><a href="./fig/1_1/4_2.jpg"><img src="./fig/1_1/4_2.jpg" alt="Reference photograph IMG_6382" width="1200" height="1600" loading="lazy" decoding="async"></a></div><figcaption>Source photographs: IMG_6381 and IMG_6382. The right photo is the reference.</figcaption></figure>
-      <figure class="wide-figure"><a href="./fig/1_4/4.png"><img src="./fig/1_4/4.png" alt="Feathered planar mosaic of the California sushi" width="3584" height="3290" loading="lazy" decoding="async"></a><figcaption>The two views form a complete face with two eyes and a mouth. The join is less noticeable on the plush, but the shelf and background change scale toward the left. The narrow overlap limits the reliability of the alignment.</figcaption></figure>
+      <figure class="wide-figure"><div class="source-pair"><img src="./fig/1_1/4_1.jpg" alt="Source photograph IMG_6381" width="1200" height="1600" loading="lazy" decoding="async"><img src="./fig/1_1/4_2.jpg" alt="Reference photograph IMG_6382" width="1200" height="1600" loading="lazy" decoding="async"></div><figcaption>Source photographs: IMG_6381 and IMG_6382. The right photo is the reference.</figcaption></figure>
+      <figure class="wide-figure"><img src="./fig/1_4/4.png" alt="Feathered planar mosaic of the California sushi" width="3584" height="3290" loading="lazy" decoding="async"><figcaption>The two views make a complete face. The shelf and background look stretched on the left.</figcaption></figure>
       <h3>Mosaic 03: Street corner</h3>
-      <figure class="wide-figure"><div class="source-pair"><a href="./fig/1_1/2_1.jpg"><img src="./fig/1_1/2_1.jpg" alt="Source photograph IMG_6365" width="1600" height="1200" loading="lazy" decoding="async"></a><a href="./fig/1_1/2_2.jpg"><img src="./fig/1_1/2_2.jpg" alt="Reference photograph IMG_6366" width="1600" height="1200" loading="lazy" decoding="async"></a></div><figcaption>Source photographs: IMG_6365 and IMG_6366. The right photo is the reference.</figcaption></figure>
-      <figure class="wide-figure"><a href="./fig/1_4/2.png"><img src="./fig/1_4/2.png" alt="Feathered planar mosaic of the street corner" width="3386" height="2438" loading="lazy" decoding="async"></a><figcaption>The house and parked vehicles join into a wider street view. Reselecting 22 point pairs slightly improved vehicle alignment, though some wires and car edges still show local ghosting.</figcaption></figure>
+      <figure class="wide-figure"><div class="source-pair"><img src="./fig/1_1/2_1.jpg" alt="Source photograph IMG_6365" width="1600" height="1200" loading="lazy" decoding="async"><img src="./fig/1_1/2_2.jpg" alt="Reference photograph IMG_6366" width="1600" height="1200" loading="lazy" decoding="async"></div><figcaption>Source photographs: IMG_6365 and IMG_6366. The right photo is the reference.</figcaption></figure>
+      <figure class="wide-figure"><img src="./fig/1_4/2.png" alt="Feathered planar mosaic of the street corner" width="3386" height="2438" loading="lazy" decoding="async"><figcaption>The house and cars mostly line up. Using 22 point pairs helped, but some car edges and wires still look doubled.</figcaption></figure>
     </section>
 
     <section class="panel writeup-section project-section" id="a-5">
       <p class="section-kicker">Part A · A.5 · Optional extension for CS180</p>
       <h2>Cylindrical Projection</h2>
-      <p>I map the photos onto a cylinder to reduce stretching near the sides. Using the image center \((c_x,c_y)\), let \(X=x-c_x\), \(Y=y-c_y\), and f be the focal length in pixels:</p>
+      <p>I also tried a cylinder to reduce stretching at the sides. Here, \((c_x,c_y)\) is the image center, \(X=x-c_x\), \(Y=y-c_y\), and f is the focal length in pixels:</p>
       <div class="formula">
         \[
         u=c_x+f\arctan(X/f),
@@ -270,57 +257,51 @@
         v=c_y+\frac{fY}{\sqrt{f^2+X^2}}.
         \]
       </div>
-      <p>I work backward from each output pixel to sample the source photos, then blend them as before. For the residential street pair, I used f = 1200 pixels at the 1600-pixel input scale. Both results use the same photos and alignment.</p>
+      <p>I sample the source photos directly and blend them in the same way. I used f = 1200 pixels for this comparison, with the same photos and H as the planar result.</p>
       <div class="figure-grid projection-comparison">
-        <figure><a href="./fig/1_4/3.png"><img src="./fig/1_4/3.png" alt="Residential street mosaic using planar projection" width="3293" height="2369" loading="lazy" decoding="async"></a><figcaption>Planar projection: 3293 × 2369 pixels.</figcaption></figure>
-        <figure><a href="./fig/1_5/3.png"><img src="./fig/1_5/3.png" alt="The same residential street pair using cylindrical projection with focal length 1200 pixels" width="2053" height="1257" loading="lazy" decoding="async"></a><figcaption>Cylindrical projection: f = 1200 pixels; 2053 × 1257 pixels.</figcaption></figure>
+        <figure><img src="./fig/1_4/3.png" alt="Residential street mosaic using planar projection" width="3293" height="2369" loading="lazy" decoding="async"><figcaption>Planar projection: 3293 × 2369 pixels.</figcaption></figure>
+        <figure><img src="./fig/1_5/3.png" alt="The same residential street pair using cylindrical projection with focal length 1200 pixels" width="2053" height="1257" loading="lazy" decoding="async"><figcaption>Cylindrical projection: f = 1200 pixels; 2053 × 1257 pixels.</figcaption></figure>
       </div>
-      <p>The cylindrical view reduces the enlarged appearance of the left-side house and cars and makes the panorama more compact. Its upper and lower boundaries are curved. Some local ghosting remains because changing the projection does not fix misalignment between the photos.</p>
+      <p>The cylinder makes the left house and cars look less stretched. The top and bottom edges become curved. Some doubled details remain.</p>
     </section>
 
 
     <div class="part-header" id="part-b">
       <p class="section-kicker">Part B</p>
       <h2>Automatic Correspondence Finding</h2>
-      <nav class="content-nav" aria-label="Part B sections">
-        <a href="#b-1">B.1 Harris &amp; ANMS</a>
-        <a href="#b-2">B.2 Descriptors</a>
-        <a href="#b-3">B.3 Matching</a>
-        <a href="#b-4">B.4 RANSAC &amp; Mosaics</a>
-      </nav>
     </div>
 
     <section class="panel writeup-section project-section" id="b-1">
       <p class="section-kicker">Part B · B.1</p>
       <h2>Harris Corners and ANMS</h2>
-      <p>I use the <a href="https://cal-cs180.github.io/fa26/hw/proj3/harris.py">supplied Harris detector</a> at a single scale. A corner has strong intensity changes in two directions, making it easier to locate in another view. The detector uses the following response, with a Gaussian scale of 1 pixel:</p>
+      <p>I used the Harris code provided by the teacher, with a Gaussian scale of 1 pixel. It finds corners where the image changes in both directions:</p>
       <div class="formula">
         \[
         M=G_1*\begin{bmatrix}I_x^2&amp;I_xI_y\\I_xI_y&amp;I_y^2\end{bmatrix},
         \qquad R=\frac{2\det M}{\operatorname{tr}M+\epsilon}.
         \]
       </div>
-      <p>I discard points within 20 pixels of the boundary and keep local peaks with \(R_i&gt;0.005R_{\max}\). Simply keeping the 500 strongest responses can crowd points into highly textured areas. Adaptive Non-Maximal Suppression (ANMS) spreads them out:</p>
+      <p>I remove points near the image boundary and keep peaks with \(R_i&gt;0.005R_{\max}\). The strongest points often cluster together, so I use ANMS to spread them out:</p>
       <div class="formula">
         \[
         r_i=\min_{j:\,R_i&lt;0.9R_j}\lVert\mathbf p_i-\mathbf p_j\rVert_2.
         \]
       </div>
-      <p>Each radius measures the distance to a sufficiently stronger corner. If none exists, the radius is infinite. I keep the 500 points with the largest radii, giving both strong responses and wider image coverage.</p>
+      <p>The radius is the distance to a stronger corner. If there is none, I set it to infinity. I keep the 500 largest radii. This is my chosen count, not a fixed assignment requirement.</p>
       <figure class="wide-figure">
-        <a href="./fig/2_1/3_1.png"><img src="./fig/2_1/3_1.png" alt="Residential street: thresholded Harris corners, 500 strongest corners, and 500 ANMS corners" width="2250" height="750" loading="lazy" decoding="async"></a>
-        <figcaption>Residential street, first view. Left: 30,423 thresholded Harris peaks. Middle: 500 strongest responses. Right: 500 ANMS points, with less clustering around foliage.</figcaption>
+        <img src="./fig/2_1/3_1.png" alt="Residential street: thresholded Harris corners, 500 strongest corners, and 500 ANMS corners" width="2250" height="750" loading="lazy" decoding="async">
+        <figcaption>Residential street. Left: 30,423 Harris peaks. Middle: 500 strongest points. Right: 500 ANMS points, spread out more evenly.</figcaption>
       </figure>
       <figure class="wide-figure">
-        <a href="./fig/2_1/1_1.png"><img src="./fig/2_1/1_1.png" alt="Kitchen: thresholded Harris corners compared with strongest-response and ANMS selection" width="2250" height="750" loading="lazy" decoding="async"></a>
-        <figcaption>Kitchen, first view. ANMS reduces 4,858 thresholded peaks to 500 points. Blank walls still provide few useful features.</figcaption>
+        <img src="./fig/2_1/1_1.png" alt="Kitchen: thresholded Harris corners compared with strongest-response and ANMS selection" width="2250" height="750" loading="lazy" decoding="async">
+        <figcaption>Kitchen: 4,858 Harris peaks become 500 ANMS points. The plain walls have few corners.</figcaption>
       </figure>
     </section>
 
     <section class="panel writeup-section project-section" id="b-2">
       <p class="section-kicker">Part B · B.2</p>
       <h2>Feature Descriptors</h2>
-      <p>For each selected point, I describe a 40 × 40 grayscale neighborhood with an 8 × 8 patch. I first blur the image with a Gaussian of scale 2 pixels, then sample every 5 pixels using bilinear interpolation:</p>
+      <p>I blur the grayscale image with a Gaussian scale of 2 pixels. Around each point, I sample an 8 × 8 patch from a 40 × 40 area, taking one sample every 5 pixels:</p>
       <div class="formula">
         \[
         I_b=G_2*I_{\mathrm{gray}},
@@ -330,28 +311,28 @@
         P_i[v,u]=I_b(x_i+5u-17.5,\ y_i+5v-17.5).
         \]
       </div>
-      <p>Subtracting the patch mean and dividing by its standard deviation reduces the effect of brightness and contrast differences. Flattening the result gives a 64-number descriptor:</p>
+      <p>I subtract the patch mean and divide by its standard deviation to reduce brightness and contrast differences. I then flatten it into 64 numbers:</p>
       <div class="formula">
         \[
         \mathbf d_i=\operatorname{vec}\!\left(\frac{P_i-\mu_i}{s_i}\right)
         \in\mathbb R^{64}.
         \]
       </div>
-      <p>The patches stay aligned with the image axes; this version does not compensate for rotation. All 500 selected points in each image produced valid descriptors.</p>
+      <p>I keep the patches aligned with the image axes. All 500 selected points in each photo gave valid descriptors.</p>
       <figure class="wide-figure">
-        <a href="./fig/2_2/3_1.png"><img src="./fig/2_2/3_1.png" alt="Six residential street neighborhoods and their normalized 8 by 8 descriptors from the first view" width="1800" height="600" loading="lazy" decoding="async"></a>
-        <figcaption>First view: six original 40 × 40 neighborhoods above their normalized 8 × 8 descriptors.</figcaption>
+        <img src="./fig/2_2/3_1.png" alt="Six residential street neighborhoods and their normalized 8 by 8 descriptors from the first view" width="1800" height="600" loading="lazy" decoding="async">
+        <figcaption>First photo. Top: 40 × 40 patches. Bottom: the normalized 8 × 8 versions.</figcaption>
       </figure>
       <figure class="wide-figure">
-        <a href="./fig/2_2/3_2.png"><img src="./fig/2_2/3_2.png" alt="Six neighborhoods and normalized descriptors from the residential street reference view" width="1800" height="600" loading="lazy" decoding="async"></a>
-        <figcaption>Reference view: the smaller patches retain broad structures such as edges, windows, and corners.</figcaption>
+        <img src="./fig/2_2/3_2.png" alt="Six neighborhoods and normalized descriptors from the residential street reference view" width="1800" height="600" loading="lazy" decoding="async">
+        <figcaption>Second photo. The small patches still show basic edges and shapes.</figcaption>
       </figure>
     </section>
 
     <section class="panel writeup-section project-section" id="b-3">
       <p class="section-kicker">Part B · B.3</p>
       <h2>Match the Features</h2>
-      <p>I compare each source descriptor against all descriptors in the reference image using the sum of squared differences (SSD). A match is kept only when the nearest candidate is clearly better than the second nearest:</p>
+      <p>I compare patches using SSD, the sum of squared differences. A smaller value means the patches look more alike. I keep the best match only if its SSD is less than 0.6 times the second-best SSD:</p>
       <div class="formula">
         \[
         D_{ij}=\lVert\mathbf d_i-\mathbf d'_j\rVert_2^2,
@@ -361,26 +342,26 @@
         \frac{D_{i,j_1}}{D_{i,j_2}}&lt;0.6.
         \]
       </div>
-      <p>The threshold of 0.6 applies to squared distances. This ratio test rejects many ambiguous patches, but some incorrect matches remain. No manually selected points are used in this step.</p>
+      <p>The ratio uses squared distances. It removes many unclear matches, but some wrong ones remain. These points are found automatically.</p>
       <figure class="wide-figure">
-        <a href="./fig/2_3/3.png"><img src="./fig/2_3/3.png" alt="92 descriptor matches between the two residential street photographs before RANSAC" width="2100" height="1050" loading="lazy" decoding="async"></a>
-        <figcaption>Residential street: 92 matches. Many connect the same house and pole features; some connect unrelated details.</figcaption>
+        <img src="./fig/2_3/3.png" alt="92 descriptor matches between the two residential street photographs before RANSAC" width="2100" height="1050" loading="lazy" decoding="async">
+        <figcaption>Residential street: 92 matches before RANSAC. Some lines connect the wrong features.</figcaption>
       </figure>
       <figure class="wide-figure">
-        <a href="./fig/2_3/2.png"><img src="./fig/2_3/2.png" alt="84 descriptor matches between the street corner photographs before RANSAC" width="2100" height="1050" loading="lazy" decoding="async"></a>
-        <figcaption>Street corner: 84 matches. Repeated windows, foliage, and road texture can still cause confusion.</figcaption>
+        <img src="./fig/2_3/2.png" alt="84 descriptor matches between the street corner photographs before RANSAC" width="2100" height="1050" loading="lazy" decoding="async">
+        <figcaption>Street corner: 84 matches before RANSAC. Similar windows and trees cause some wrong matches.</figcaption>
       </figure>
       <figure class="wide-figure">
-        <a href="./fig/2_3/1.png"><img src="./fig/2_3/1.png" alt="94 descriptor matches between the kitchen photographs before RANSAC" width="2100" height="1050" loading="lazy" decoding="async"></a>
-        <figcaption>Kitchen: 94 matches. Similar cabinet corners and edges produce several obvious mismatches.</figcaption>
+        <img src="./fig/2_3/1.png" alt="94 descriptor matches between the kitchen photographs before RANSAC" width="2100" height="1050" loading="lazy" decoding="async">
+        <figcaption>Kitchen: 94 matches before RANSAC. Several cabinet corners are matched incorrectly.</figcaption>
       </figure>
     </section>
 
     <section class="panel writeup-section project-section" id="b-4">
       <p class="section-kicker">Part B · B.4</p>
       <h2>RANSAC and Automatic Mosaics</h2>
-      <p>I implement four-point RANSAC from scratch. Each of 10,000 trials samples four matches and fits a homography using the solver from Part A. Samples with collinear triples are skipped.</p>
-      <p>A good homography should map a match correctly in both directions. I use the larger of the forward and backward errors, measured at the 1600-pixel input scale. A tilde appends a 1 to a 2D point, and \(\pi\) divides by the last coordinate:</p>
+      <p>I wrote four-point RANSAC from scratch. Each trial picks four matches and computes H with the Part A solver. I run 10,000 trials and skip samples with three points on one line.</p>
+      <p>I check how far each point misses its match in both directions and use the larger error. A tilde adds a 1 to a point, and \(\pi\) divides by the last coordinate:</p>
       <div class="formula">
         \[
         \begin{aligned}
@@ -394,7 +375,7 @@
         \qquad H^*=\underset{H}{\operatorname{arg\,max}}\,|\mathcal I(H)|.
         \]
       </div>
-      <p>I refit the best model using all its inliers and update the inlier set, stopping when it stays unchanged or after five fits. A fixed random seed makes the results repeatable. Finally, I keep the second photo fixed and use Part A's bilinear inverse warping and feathered blending.</p>
+      <p>I keep matches with error below 3 pixels. I choose the H with the most inliers and fit it again using those points, up to five times. Then I warp and blend the photos with the Part A code.</p>
       <div class="table-wrap">
         <table class="results-table">
           <caption>Automatic alignment results</caption>
@@ -406,49 +387,49 @@
           </tbody>
         </table>
       </div>
-      <p>The RMSE uses the same bidirectional error \(e_i\) on the final inliers. It measures how well those points fit, rather than the alignment quality of every pixel.</p>
+      <p>The RMSE uses \(e_i\) for the final inliers. It describes the point fit, not every pixel in the mosaic.</p>
 
       <h3 id="b-4-1">Automatic Mosaic 01: Residential Street</h3>
       <figure class="wide-figure">
-        <a href="./fig/2_4/3_1.png"><img src="./fig/2_4/3_1.png" alt="44 residential street matches retained by RANSAC" width="2100" height="1050" loading="lazy" decoding="async"></a>
-        <figcaption>RANSAC keeps 44 of 92 matches, mainly on shared building, pole, and vehicle details.</figcaption>
+        <img src="./fig/2_4/3_1.png" alt="44 residential street matches retained by RANSAC" width="2100" height="1050" loading="lazy" decoding="async">
+        <figcaption>RANSAC keeps 44 of the 92 matches.</figcaption>
       </figure>
       <figure class="wide-figure">
-        <a href="./fig/2_4/3_3.png"><img src="./fig/2_4/3_3.png" alt="Residential street mosaics side by side: manual correspondences on the left and automatic RANSAC on the right" width="2100" height="900" loading="lazy" decoding="async"></a>
-        <figcaption>Left: manual alignment. Right: automatic alignment. Both use the same reference view, rendering method, and display scale. The roof, windows, and pole align well overall; some car and foliage edges still show ghosting. <a href="./fig/2_4/3_2.png">Full-size automatic mosaic</a>.</figcaption>
+        <img src="./fig/2_4/3_3.png" alt="Residential street mosaics side by side: manual correspondences on the left and automatic RANSAC on the right" width="2100" height="900" loading="lazy" decoding="async">
+        <figcaption>Left: manual points. Right: automatic points. Both use the same scale and blending. The buildings line up well, but some cars and leaves look doubled.</figcaption>
       </figure>
 
       <h3 id="b-4-2">Automatic Mosaic 02: Street Corner</h3>
       <figure class="wide-figure">
-        <a href="./fig/2_4/2_1.png"><img src="./fig/2_4/2_1.png" alt="47 street corner matches retained by RANSAC" width="2100" height="1050" loading="lazy" decoding="async"></a>
-        <figcaption>RANSAC keeps 47 of 84 matches, rejecting many unrelated road and foliage points.</figcaption>
+        <img src="./fig/2_4/2_1.png" alt="47 street corner matches retained by RANSAC" width="2100" height="1050" loading="lazy" decoding="async">
+        <figcaption>RANSAC keeps 47 of the 84 matches.</figcaption>
       </figure>
       <figure class="wide-figure">
-        <a href="./fig/2_4/2_3.png"><img src="./fig/2_4/2_3.png" alt="Street corner mosaics side by side: manual alignment on the left and automatic alignment on the right" width="2100" height="900" loading="lazy" decoding="async"></a>
-        <figcaption>The automatic result is close to the manual result around the house and parked vehicles. Some thin wires and car edges remain doubled. The left side is stretched in both planar mosaics. <a href="./fig/2_4/2_2.png">Full-size automatic mosaic</a>.</figcaption>
+        <img src="./fig/2_4/2_3.png" alt="Street corner mosaics side by side: manual alignment on the left and automatic alignment on the right" width="2100" height="900" loading="lazy" decoding="async">
+        <figcaption>Left: manual. Right: automatic. The house and cars look similar in both results. Some wires and edges are still doubled.</figcaption>
       </figure>
 
       <h3 id="b-4-3">Automatic Mosaic 03: Kitchen</h3>
       <figure class="wide-figure">
-        <div class="source-pair"><a href="./fig/1_1/1_1.jpg"><img src="./fig/1_1/1_1.jpg" alt="Kitchen source photograph IMG_6363" width="1600" height="1200" loading="lazy" decoding="async"></a><a href="./fig/1_1/1_2.jpg"><img src="./fig/1_1/1_2.jpg" alt="Kitchen reference photograph IMG_6364" width="1600" height="1200" loading="lazy" decoding="async"></a></div>
+        <div class="source-pair"><img src="./fig/1_1/1_1.jpg" alt="Kitchen source photograph IMG_6363" width="1600" height="1200" loading="lazy" decoding="async"><img src="./fig/1_1/1_2.jpg" alt="Kitchen reference photograph IMG_6364" width="1600" height="1200" loading="lazy" decoding="async"></div>
         <figcaption>Kitchen source photographs: IMG_6363 and IMG_6364. The right photo is the reference.</figcaption>
       </figure>
       <figure class="wide-figure">
-        <a href="./fig/2_4/1_1.png"><img src="./fig/2_4/1_1.png" alt="22 kitchen matches retained by RANSAC" width="2100" height="1050" loading="lazy" decoding="async"></a>
-        <figcaption>RANSAC keeps 22 of 94 matches. Despite the many initial mismatches, the remaining points support a consistent alignment.</figcaption>
+        <img src="./fig/2_4/1_1.png" alt="22 kitchen matches retained by RANSAC" width="2100" height="1050" loading="lazy" decoding="async">
+        <figcaption>RANSAC keeps 22 of the 94 matches.</figcaption>
       </figure>
       <figure class="wide-figure">
-        <a href="./fig/2_4/1_3.png"><img src="./fig/2_4/1_3.png" alt="Kitchen mosaics side by side: manual alignment on the left and automatic alignment on the right" width="2100" height="900" loading="lazy" decoding="async"></a>
-        <figcaption>The automatic result forms a similar overall view to the manual result. The nearby counter items and mop still show ghosting, while the refrigerator is enlarged toward the left. <a href="./fig/2_4/1_2.png">Full-size automatic mosaic</a>.</figcaption>
+        <img src="./fig/2_4/1_3.png" alt="Kitchen mosaics side by side: manual alignment on the left and automatic alignment on the right" width="2100" height="900" loading="lazy" decoding="async">
+        <figcaption>Left: manual. Right: automatic. The overall results are similar. Some nearby objects look doubled, and the refrigerator is stretched on the left.</figcaption>
       </figure>
 
       <h3>A Difficult Pair: California Sushi</h3>
       <figure class="wide-figure">
-        <a href="./fig/2_3/4.png"><img src="./fig/2_3/4.png" alt="35 tentative California sushi matches, including many points mapped to the same target feature" width="2100" height="1050" loading="lazy" decoding="async"></a>
-        <figcaption>The ratio test keeps 35 matches, but many source points connect to the same target location.</figcaption>
+        <img src="./fig/2_3/4.png" alt="35 tentative California sushi matches, including many points mapped to the same target feature" width="2100" height="1050" loading="lazy" decoding="async">
+        <figcaption>35 matches pass the ratio test, but many point to the same place in the second photo.</figcaption>
       </figure>
-      <p>The narrow overlap and repetitive plush texture leave too few reliable matches. RANSAC does not recover a useful panorama for this pair. Raising the SSD ratio threshold to 0.8 or 0.9 adds matches but still does not give a reliable alignment. I keep the manually aligned result in Part A and use the three successful scenes above for the automatic comparison.</p>
-      <p>These results show why descriptor matching needs a geometric check: a patch can look similar in the wrong place. RANSAC removes many of those errors, but it cannot fix parallax, movement, or a lack of shared features.</p>
+      <p>The sushi photos share only a small area, and the fur patches look very similar. RANSAC did not find a useful alignment. Raising the ratio threshold to 0.8 or 0.9 did not help, so I used the other three scenes for the automatic mosaics.</p>
+      <p>RANSAC removes many wrong matches, but it still needs enough good ones. It also cannot fix objects moving or the camera shifting sideways.</p>
     </section>
   </main>
 </body>
