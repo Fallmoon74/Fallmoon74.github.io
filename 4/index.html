@@ -47,15 +47,15 @@
 
       <div class="capture-grid">
         <figure id="capture-set-3">
-          <div class="source-pair"><img src="./fig/1_1/3_1.jpg" alt="Source photograph IMG_6367" width="1600" height="1200" loading="lazy" decoding="async"><img src="./fig/1_1/3_2.jpg" alt="Reference photograph IMG_6368" width="1600" height="1200" loading="lazy" decoding="async"></div>
+          <div class="source-pair"><img src="./fig/1_1/3_1.jpg" alt="Source photograph IMG_6367" width="1600" height="1200" loading="eager" decoding="async"><img src="./fig/1_1/3_2.jpg" alt="Reference photograph IMG_6368" width="1600" height="1200" loading="eager" decoding="async"></div>
           <figcaption><strong>Residential street.</strong> The buildings, cars, and pole appear in both photos.</figcaption>
         </figure>
         <figure id="capture-set-4">
-          <div class="source-pair"><img src="./fig/1_1/4_1.jpg" alt="Source photograph IMG_6381" width="1200" height="1600" loading="lazy" decoding="async"><img src="./fig/1_1/4_2.jpg" alt="Reference photograph IMG_6382" width="1200" height="1600" loading="lazy" decoding="async"></div>
+          <div class="source-pair"><img src="./fig/1_1/4_1.jpg" alt="Source photograph IMG_6381" width="1200" height="1600" loading="eager" decoding="async"><img src="./fig/1_1/4_2.jpg" alt="Reference photograph IMG_6382" width="1200" height="1600" loading="eager" decoding="async"></div>
           <figcaption><strong>California sushi.</strong> The overlap is small, so matching is harder.</figcaption>
         </figure>
         <figure id="capture-set-2">
-          <div class="source-pair"><img src="./fig/1_1/2_1.jpg" alt="Source photograph IMG_6365" width="1600" height="1200" loading="lazy" decoding="async"><img src="./fig/1_1/2_2.jpg" alt="Reference photograph IMG_6366" width="1600" height="1200" loading="lazy" decoding="async"></div>
+          <div class="source-pair"><img src="./fig/1_1/2_1.jpg" alt="Source photograph IMG_6365" width="1600" height="1200" loading="eager" decoding="async"><img src="./fig/1_1/2_2.jpg" alt="Reference photograph IMG_6366" width="1600" height="1200" loading="eager" decoding="async"></div>
           <figcaption><strong>Street corner.</strong> I used details on the house and parked cars.</figcaption>
         </figure>
       </div>
@@ -116,7 +116,7 @@
 
       <h3>Residential street</h3>
       <figure class="wide-figure">
-        <img src="./fig/1_2/3.png" alt="Numbered corresponding points for the residential street pair" width="2100" height="900" loading="lazy" decoding="async">
+        <img src="./fig/1_2/3.png" alt="Numbered corresponding points for the residential street pair" width="2100" height="900" loading="eager" decoding="async">
         <figcaption>IMG_6367 → IMG_6368; 12 point pairs. Matching numbers show the same feature.</figcaption>
       </figure>
       <div class="formula">
@@ -125,7 +125,7 @@
       <p>The point-fitting RMSE is 1.26 pixels.</p>
       <h3>California sushi</h3>
       <figure class="wide-figure">
-        <img src="./fig/1_2/4.png" alt="Numbered corresponding points for the California sushi pair" width="1431" height="919" loading="lazy" decoding="async">
+        <img src="./fig/1_2/4.png" alt="Numbered corresponding points for the California sushi pair" width="1431" height="919" loading="eager" decoding="async">
         <figcaption>IMG_6381 → IMG_6382; 10 point pairs. Matching numbers show the same feature.</figcaption>
       </figure>
       <div class="formula">
@@ -134,7 +134,7 @@
       <p>The point-fitting RMSE is 1.11 pixels.</p>
       <h3>Street corner</h3>
       <figure class="wide-figure">
-        <img src="./fig/1_2/2.png" alt="Numbered corresponding points for the street corner pair" width="2100" height="900" loading="lazy" decoding="async">
+        <img src="./fig/1_2/2.png" alt="Numbered corresponding points for the street corner pair" width="2100" height="900" loading="eager" decoding="async">
         <figcaption>IMG_6365 → IMG_6366; 22 point pairs. Matching numbers show the same feature.</figcaption>
       </figure>
       <div class="formula">
@@ -197,16 +197,16 @@
       <h3>Rectification: CD Cover</h3>
       <p>I picked the corners of the square paper cover, leaving out the black case spine.</p>
       <div class="figure-grid three-up rectification-grid">
-        <figure><img src="./fig/1_3/1_0.jpg" alt="Oblique cd cover photograph with four selected corners" width="1200" height="1600" loading="lazy" decoding="async"><figcaption>Original with selected corners.</figcaption></figure>
-        <figure><img src="./fig/1_3/1_1.png" alt="CD Cover rectified with nearest-neighbor interpolation" width="1000" height="1000" loading="lazy" decoding="async"><figcaption>Nearest neighbor · 1000 × 1000.</figcaption></figure>
-        <figure><img src="./fig/1_3/1_2.png" alt="CD Cover rectified with bilinear interpolation" width="1000" height="1000" loading="lazy" decoding="async"><figcaption>Bilinear · 1000 × 1000.</figcaption></figure>
+        <figure><img src="./fig/1_3/1_0.jpg" alt="Oblique cd cover photograph with four selected corners" width="1200" height="1600" loading="eager" decoding="async"><figcaption>Original with selected corners.</figcaption></figure>
+        <figure><img src="./fig/1_3/1_1.png" alt="CD Cover rectified with nearest-neighbor interpolation" width="1000" height="1000" loading="eager" decoding="async"><figcaption>Nearest neighbor · 1000 × 1000.</figcaption></figure>
+        <figure><img src="./fig/1_3/1_2.png" alt="CD Cover rectified with bilinear interpolation" width="1000" height="1000" loading="eager" decoding="async"><figcaption>Bilinear · 1000 × 1000.</figcaption></figure>
       </div>
       <h3>Rectification: Bank Card</h3>
       <p>I used the straight edges to estimate the card corners and set the output to 540 × 856 pixels.</p>
       <div class="figure-grid three-up rectification-grid">
-        <figure><img src="./fig/1_3/2_0.jpg" alt="Oblique bank card photograph with four selected corners" width="1200" height="1600" loading="lazy" decoding="async"><figcaption>Original with selected corners.</figcaption></figure>
-        <figure><img src="./fig/1_3/2_1.png" alt="Bank Card rectified with nearest-neighbor interpolation" width="540" height="856" loading="lazy" decoding="async"><figcaption>Nearest neighbor · 540 × 856.</figcaption></figure>
-        <figure><img src="./fig/1_3/2_2.png" alt="Bank Card rectified with bilinear interpolation" width="540" height="856" loading="lazy" decoding="async"><figcaption>Bilinear · 540 × 856.</figcaption></figure>
+        <figure><img src="./fig/1_3/2_0.jpg" alt="Oblique bank card photograph with four selected corners" width="1200" height="1600" loading="eager" decoding="async"><figcaption>Original with selected corners.</figcaption></figure>
+        <figure><img src="./fig/1_3/2_1.png" alt="Bank Card rectified with nearest-neighbor interpolation" width="540" height="856" loading="eager" decoding="async"><figcaption>Nearest neighbor · 540 × 856.</figcaption></figure>
+        <figure><img src="./fig/1_3/2_2.png" alt="Bank Card rectified with bilinear interpolation" width="540" height="856" loading="eager" decoding="async"><figcaption>Bilinear · 540 × 856.</figcaption></figure>
       </div>
       <div class="table-wrap">
         <table class="results-table">
@@ -236,14 +236,14 @@
       </div>
       <p>This makes the seam less sharp. Misaligned details can still look doubled, and empty areas stay transparent.</p>
       <h3>Mosaic 01: Residential street</h3>
-      <figure class="wide-figure"><div class="source-pair"><img src="./fig/1_1/3_1.jpg" alt="Source photograph IMG_6367" width="1600" height="1200" loading="lazy" decoding="async"><img src="./fig/1_1/3_2.jpg" alt="Reference photograph IMG_6368" width="1600" height="1200" loading="lazy" decoding="async"></div><figcaption>Source photographs: IMG_6367 and IMG_6368. The right photo is the reference.</figcaption></figure>
-      <figure class="wide-figure"><img src="./fig/1_4/3.png" alt="Feathered planar mosaic of the residential street" width="3293" height="2369" loading="lazy" decoding="async"><figcaption>The roof and windows mostly line up. Some trees and cars look doubled, and the left side is stretched.</figcaption></figure>
+      <figure class="wide-figure"><div class="source-pair"><img src="./fig/1_1/3_1.jpg" alt="Source photograph IMG_6367" width="1600" height="1200" loading="eager" decoding="async"><img src="./fig/1_1/3_2.jpg" alt="Reference photograph IMG_6368" width="1600" height="1200" loading="eager" decoding="async"></div><figcaption>Source photographs: IMG_6367 and IMG_6368. The right photo is the reference.</figcaption></figure>
+      <figure class="wide-figure"><img src="./fig/1_4/3.png" alt="Feathered planar mosaic of the residential street" width="3293" height="2369" loading="eager" decoding="async"><figcaption>The roof and windows mostly line up. Some trees and cars look doubled, and the left side is stretched.</figcaption></figure>
       <h3>Mosaic 02: California sushi</h3>
-      <figure class="wide-figure"><div class="source-pair"><img src="./fig/1_1/4_1.jpg" alt="Source photograph IMG_6381" width="1200" height="1600" loading="lazy" decoding="async"><img src="./fig/1_1/4_2.jpg" alt="Reference photograph IMG_6382" width="1200" height="1600" loading="lazy" decoding="async"></div><figcaption>Source photographs: IMG_6381 and IMG_6382. The right photo is the reference.</figcaption></figure>
-      <figure class="wide-figure"><img src="./fig/1_4/4.png" alt="Feathered planar mosaic of the California sushi" width="3584" height="3290" loading="lazy" decoding="async"><figcaption>The two views make a complete face. The shelf and background look stretched on the left.</figcaption></figure>
+      <figure class="wide-figure"><div class="source-pair"><img src="./fig/1_1/4_1.jpg" alt="Source photograph IMG_6381" width="1200" height="1600" loading="eager" decoding="async"><img src="./fig/1_1/4_2.jpg" alt="Reference photograph IMG_6382" width="1200" height="1600" loading="eager" decoding="async"></div><figcaption>Source photographs: IMG_6381 and IMG_6382. The right photo is the reference.</figcaption></figure>
+      <figure class="wide-figure"><img src="./fig/1_4/4.png" alt="Feathered planar mosaic of the California sushi" width="3584" height="3290" loading="eager" decoding="async"><figcaption>The two views make a complete face. The shelf and background look stretched on the left.</figcaption></figure>
       <h3>Mosaic 03: Street corner</h3>
-      <figure class="wide-figure"><div class="source-pair"><img src="./fig/1_1/2_1.jpg" alt="Source photograph IMG_6365" width="1600" height="1200" loading="lazy" decoding="async"><img src="./fig/1_1/2_2.jpg" alt="Reference photograph IMG_6366" width="1600" height="1200" loading="lazy" decoding="async"></div><figcaption>Source photographs: IMG_6365 and IMG_6366. The right photo is the reference.</figcaption></figure>
-      <figure class="wide-figure"><img src="./fig/1_4/2.png" alt="Feathered planar mosaic of the street corner" width="3386" height="2438" loading="lazy" decoding="async"><figcaption>The house and cars mostly line up. Using 22 point pairs helped, but some car edges and wires still look doubled.</figcaption></figure>
+      <figure class="wide-figure"><div class="source-pair"><img src="./fig/1_1/2_1.jpg" alt="Source photograph IMG_6365" width="1600" height="1200" loading="eager" decoding="async"><img src="./fig/1_1/2_2.jpg" alt="Reference photograph IMG_6366" width="1600" height="1200" loading="eager" decoding="async"></div><figcaption>Source photographs: IMG_6365 and IMG_6366. The right photo is the reference.</figcaption></figure>
+      <figure class="wide-figure"><img src="./fig/1_4/2.png" alt="Feathered planar mosaic of the street corner" width="3386" height="2438" loading="eager" decoding="async"><figcaption>The house and cars mostly line up. Using 22 point pairs helped, but some car edges and wires still look doubled.</figcaption></figure>
     </section>
 
     <section class="panel writeup-section project-section" id="a-5">
@@ -259,8 +259,8 @@
       </div>
       <p>I sample the source photos directly and blend them in the same way. I used f = 1200 pixels for this comparison, with the same photos and H as the planar result.</p>
       <div class="figure-grid projection-comparison">
-        <figure><img src="./fig/1_4/3.png" alt="Residential street mosaic using planar projection" width="3293" height="2369" loading="lazy" decoding="async"><figcaption>Planar projection: 3293 × 2369 pixels.</figcaption></figure>
-        <figure><img src="./fig/1_5/3.png" alt="The same residential street pair using cylindrical projection with focal length 1200 pixels" width="2053" height="1257" loading="lazy" decoding="async"><figcaption>Cylindrical projection: f = 1200 pixels; 2053 × 1257 pixels.</figcaption></figure>
+        <figure><img src="./fig/1_4/3.png" alt="Residential street mosaic using planar projection" width="3293" height="2369" loading="eager" decoding="async"><figcaption>Planar projection: 3293 × 2369 pixels.</figcaption></figure>
+        <figure><img src="./fig/1_5/3.png" alt="The same residential street pair using cylindrical projection with focal length 1200 pixels" width="2053" height="1257" loading="eager" decoding="async"><figcaption>Cylindrical projection: f = 1200 pixels; 2053 × 1257 pixels.</figcaption></figure>
       </div>
       <p>The cylinder makes the left house and cars look less stretched. The top and bottom edges become curved. Some doubled details remain.</p>
     </section>
@@ -289,11 +289,11 @@
       </div>
       <p>The radius is the distance to a stronger corner. If there is none, I set it to infinity. I keep the 500 largest radii. This is my chosen count, not a fixed assignment requirement.</p>
       <figure class="wide-figure">
-        <img src="./fig/2_1/3_1.png" alt="Residential street: thresholded Harris corners, 500 strongest corners, and 500 ANMS corners" width="2250" height="750" loading="lazy" decoding="async">
+        <img src="./fig/2_1/3_1.png" alt="Residential street: thresholded Harris corners, 500 strongest corners, and 500 ANMS corners" width="2250" height="750" loading="eager" decoding="async">
         <figcaption>Residential street. Left: 30,423 Harris peaks. Middle: 500 strongest points. Right: 500 ANMS points, spread out more evenly.</figcaption>
       </figure>
       <figure class="wide-figure">
-        <img src="./fig/2_1/1_1.png" alt="Kitchen: thresholded Harris corners compared with strongest-response and ANMS selection" width="2250" height="750" loading="lazy" decoding="async">
+        <img src="./fig/2_1/1_1.png" alt="Kitchen: thresholded Harris corners compared with strongest-response and ANMS selection" width="2250" height="750" loading="eager" decoding="async">
         <figcaption>Kitchen: 4,858 Harris peaks become 500 ANMS points. The plain walls have few corners.</figcaption>
       </figure>
     </section>
@@ -320,11 +320,11 @@
       </div>
       <p>I keep the patches aligned with the image axes. All 500 selected points in each photo gave valid descriptors.</p>
       <figure class="wide-figure">
-        <img src="./fig/2_2/3_1.png" alt="Six residential street neighborhoods and their normalized 8 by 8 descriptors from the first view" width="1800" height="600" loading="lazy" decoding="async">
+        <img src="./fig/2_2/3_1.png" alt="Six residential street neighborhoods and their normalized 8 by 8 descriptors from the first view" width="1800" height="600" loading="eager" decoding="async">
         <figcaption>First photo. Top: 40 × 40 patches. Bottom: the normalized 8 × 8 versions.</figcaption>
       </figure>
       <figure class="wide-figure">
-        <img src="./fig/2_2/3_2.png" alt="Six neighborhoods and normalized descriptors from the residential street reference view" width="1800" height="600" loading="lazy" decoding="async">
+        <img src="./fig/2_2/3_2.png" alt="Six neighborhoods and normalized descriptors from the residential street reference view" width="1800" height="600" loading="eager" decoding="async">
         <figcaption>Second photo. The small patches still show basic edges and shapes.</figcaption>
       </figure>
     </section>
@@ -344,15 +344,15 @@
       </div>
       <p>The ratio uses squared distances. It removes many unclear matches, but some wrong ones remain. These points are found automatically.</p>
       <figure class="wide-figure">
-        <img src="./fig/2_3/3.png" alt="92 descriptor matches between the two residential street photographs before RANSAC" width="2100" height="1050" loading="lazy" decoding="async">
+        <img src="./fig/2_3/3.png" alt="92 descriptor matches between the two residential street photographs before RANSAC" width="2100" height="1050" loading="eager" decoding="async">
         <figcaption>Residential street: 92 matches before RANSAC. Some lines connect the wrong features.</figcaption>
       </figure>
       <figure class="wide-figure">
-        <img src="./fig/2_3/2.png" alt="84 descriptor matches between the street corner photographs before RANSAC" width="2100" height="1050" loading="lazy" decoding="async">
+        <img src="./fig/2_3/2.png" alt="84 descriptor matches between the street corner photographs before RANSAC" width="2100" height="1050" loading="eager" decoding="async">
         <figcaption>Street corner: 84 matches before RANSAC. Similar windows and trees cause some wrong matches.</figcaption>
       </figure>
       <figure class="wide-figure">
-        <img src="./fig/2_3/1.png" alt="94 descriptor matches between the kitchen photographs before RANSAC" width="2100" height="1050" loading="lazy" decoding="async">
+        <img src="./fig/2_3/1.png" alt="94 descriptor matches between the kitchen photographs before RANSAC" width="2100" height="1050" loading="eager" decoding="async">
         <figcaption>Kitchen: 94 matches before RANSAC. Several cabinet corners are matched incorrectly.</figcaption>
       </figure>
     </section>
@@ -391,41 +391,41 @@
 
       <h3 id="b-4-1">Automatic Mosaic 01: Residential Street</h3>
       <figure class="wide-figure">
-        <img src="./fig/2_4/3_1.png" alt="44 residential street matches retained by RANSAC" width="2100" height="1050" loading="lazy" decoding="async">
+        <img src="./fig/2_4/3_1.png" alt="44 residential street matches retained by RANSAC" width="2100" height="1050" loading="eager" decoding="async">
         <figcaption>RANSAC keeps 44 of the 92 matches.</figcaption>
       </figure>
       <figure class="wide-figure">
-        <img src="./fig/2_4/3_3.png" alt="Residential street mosaics side by side: manual correspondences on the left and automatic RANSAC on the right" width="2100" height="900" loading="lazy" decoding="async">
+        <img src="./fig/2_4/3_3.png" alt="Residential street mosaics side by side: manual correspondences on the left and automatic RANSAC on the right" width="2100" height="900" loading="eager" decoding="async">
         <figcaption>Left: manual points. Right: automatic points. Both use the same scale and blending. The buildings line up well, but some cars and leaves look doubled.</figcaption>
       </figure>
 
       <h3 id="b-4-2">Automatic Mosaic 02: Street Corner</h3>
       <figure class="wide-figure">
-        <img src="./fig/2_4/2_1.png" alt="47 street corner matches retained by RANSAC" width="2100" height="1050" loading="lazy" decoding="async">
+        <img src="./fig/2_4/2_1.png" alt="47 street corner matches retained by RANSAC" width="2100" height="1050" loading="eager" decoding="async">
         <figcaption>RANSAC keeps 47 of the 84 matches.</figcaption>
       </figure>
       <figure class="wide-figure">
-        <img src="./fig/2_4/2_3.png" alt="Street corner mosaics side by side: manual alignment on the left and automatic alignment on the right" width="2100" height="900" loading="lazy" decoding="async">
+        <img src="./fig/2_4/2_3.png" alt="Street corner mosaics side by side: manual alignment on the left and automatic alignment on the right" width="2100" height="900" loading="eager" decoding="async">
         <figcaption>Left: manual. Right: automatic. The house and cars look similar in both results. Some wires and edges are still doubled.</figcaption>
       </figure>
 
       <h3 id="b-4-3">Automatic Mosaic 03: Kitchen</h3>
       <figure class="wide-figure">
-        <div class="source-pair"><img src="./fig/1_1/1_1.jpg" alt="Kitchen source photograph IMG_6363" width="1600" height="1200" loading="lazy" decoding="async"><img src="./fig/1_1/1_2.jpg" alt="Kitchen reference photograph IMG_6364" width="1600" height="1200" loading="lazy" decoding="async"></div>
+        <div class="source-pair"><img src="./fig/1_1/1_1.jpg" alt="Kitchen source photograph IMG_6363" width="1600" height="1200" loading="eager" decoding="async"><img src="./fig/1_1/1_2.jpg" alt="Kitchen reference photograph IMG_6364" width="1600" height="1200" loading="eager" decoding="async"></div>
         <figcaption>Kitchen source photographs: IMG_6363 and IMG_6364. The right photo is the reference.</figcaption>
       </figure>
       <figure class="wide-figure">
-        <img src="./fig/2_4/1_1.png" alt="22 kitchen matches retained by RANSAC" width="2100" height="1050" loading="lazy" decoding="async">
+        <img src="./fig/2_4/1_1.png" alt="22 kitchen matches retained by RANSAC" width="2100" height="1050" loading="eager" decoding="async">
         <figcaption>RANSAC keeps 22 of the 94 matches.</figcaption>
       </figure>
       <figure class="wide-figure">
-        <img src="./fig/2_4/1_3.png" alt="Kitchen mosaics side by side: manual alignment on the left and automatic alignment on the right" width="2100" height="900" loading="lazy" decoding="async">
+        <img src="./fig/2_4/1_3.png" alt="Kitchen mosaics side by side: manual alignment on the left and automatic alignment on the right" width="2100" height="900" loading="eager" decoding="async">
         <figcaption>Left: manual. Right: automatic. The overall results are similar. Some nearby objects look doubled, and the refrigerator is stretched on the left.</figcaption>
       </figure>
 
       <h3>A Difficult Pair: California Sushi</h3>
       <figure class="wide-figure">
-        <img src="./fig/2_3/4.png" alt="35 tentative California sushi matches, including many points mapped to the same target feature" width="2100" height="1050" loading="lazy" decoding="async">
+        <img src="./fig/2_3/4.png" alt="35 tentative California sushi matches, including many points mapped to the same target feature" width="2100" height="1050" loading="eager" decoding="async">
         <figcaption>35 matches pass the ratio test, but many point to the same place in the second photo.</figcaption>
       </figure>
       <p>The sushi photos share only a small area, and the fur patches look very similar. RANSAC did not find a useful alignment. Raising the ratio threshold to 0.8 or 0.9 did not help, so I used the other three scenes for the automatic mosaics.</p>
